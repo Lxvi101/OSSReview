@@ -1,0 +1,47 @@
+{
+  "name": "github-code-reviewer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted, open-source GitHub pull request review bot powered by local Claude Code or Codex CLI reviewers.",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/your-org/github-code-reviewer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/github-code-reviewer.git"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:integration": "turbo run test:integration",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "boundaries": "eslint --config eslint.boundaries.config.mjs \"packages/**/src/**/*.ts\" \"apps/**/src/**/*.ts\"",
+    "dev:server": "pnpm --filter @gcr/server dev",
+    "dev:worker": "pnpm --filter @gcr/worker dev",
+    "db:migrate": "pnpm --filter @gcr/storage migrate",
+    "db:migrate:dry-run": "pnpm --filter @gcr/storage migrate:dry-run",
+    "fetch-vendor": "node scripts/fetch-vendor-assets.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "init-env": "bash scripts/init-env.sh",
+    "tunnel:ngrok": "bash scripts/tunnel-ngrok.sh",
+    "import-credentials": "bash scripts/import-credentials.sh",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^20.14.0",
+    "eslint": "^9.13.0",
+    "eslint-plugin-boundaries": "^5.0.1",
+    "turbo": "^2.2.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.16.0",
+    "vitest": "^2.1.4"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "action": "opened",
+  "number": 43,
+  "pull_request": {
+    "id": 1000002,
+    "number": 43,
+    "title": "[WIP] Try something",
+    "body": "",
+    "user": { "login": "alice" },
+    "draft": true,
+    "head": { "sha": "3333333333333333333333333333333333333333", "ref": "wip" },
+    "base": { "sha": "0000000000000000000000000000000000000000", "ref": "main" }
+  },
+  "repository": {
+    "id": 67890,
+    "name": "widgets",
+    "full_name": "acme/widgets",
+    "owner": { "login": "acme", "id": 11111 }
+  },
+  "installation": { "id": 12345 },
+  "sender": { "login": "alice", "id": 22222 }
+}

@@ -1,0 +1,111 @@
+<h1>
+  <%= it.repo.fullName %>
+  <% if (!it.repo.enabled) { %>
+    <span class="state state-cancelled" style="font-size:11px;vertical-align:middle">disabled</span>
+  <% } %>
+</h1>
+
+<p style="color:var(--muted);font-size:13px;margin-top:0">
+  <a target="_blank" rel="noopener" href="<%= it.repo.githubUrl %>"><%= it.repo.fullName %> on GitHub ↗</a>
+  · <a target="_blank" rel="noopener" href="<%= it.repo.configureInstallUrl %>">Configure installation ↗</a>
+  · installation #<%= it.repo.installationId %>
+  · tracked since <%= it.repo.createdAt %>
+</p>
+
+<% if (it.saved) { %>
+  <p style="background:#dafbe1;color:#1a7f37;padding:8px 12px;border-radius:6px;font-size:13px">
+    Saved.
+  </p>
+<% } %>
+
+<section class="card" style="padding:16px;margin-bottom:16px">
+  <h2 style="margin-top:0;font-size:14px">Pause / resume reviews on this repo</h2>
+  <p style="color:var(--muted);font-size:12px;margin:0 0 8px 0">
+    Local toggle. Doesn't change what GitHub grants — for that, use
+    <em>Configure installation</em> above. Useful for pausing a noisy WIP repo
+    you don't want reviewed right now.
+  </p>
+  <form method="post" action="/repositories/<%= it.repo.id %>/enabled">
+    <label style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" name="enabled"<% if (it.repo.enabled) { %> checked<% } %>>
+      Enabled (worker reviews PRs in this repo)
+    </label>
+    <button type="submit" class="btn" style="margin-top:8px">Save</button>
+  </form>
+</section>
+
+<section class="card" style="padding:16px;margin-bottom:16px">
+  <h2 style="margin-top:0;font-size:14px">Review settings</h2>
+  <p style="color:var(--muted);font-size:12px;margin:0 0 12px 0">
+    Per-repo overrides on top of the global defaults. Leave a field empty to
+    fall back to the default.
+  </p>
+
+  <form method="post" action="/repositories/<%= it.repo.id %>/settings">
+    <div style="display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:start">
+
+      <label for="severityFloor">Minimum severity to post</label>
+      <select id="severityFloor" name="severityFloor">
+        <option value=""<% if (!it.settings.severityFloor) { %> selected<% } %>>(default — suggestion)</option>
+        <% var sevOptions = ['blocker','warning','suggestion','nit','praise']; %>
+        <% sevOptions.forEach(function(s){ %>
+          <option value="<%= s %>"<% if (it.settings.severityFloor === s) { %> selected<% } %>><%= s %></option>
+        <% }) %>
+      </select>
+
+      <label for="reviewerProvider">Reviewer provider</label>
+      <select id="reviewerProvider" name="reviewerProvider">
+        <option value=""<% if (!it.settings.reviewerProvider) { %> selected<% } %>>(default)</option>
+        <option value="claude"<% if (it.settings.reviewerProvider === 'claude') { %> selected<% } %>>claude (Claude Code CLI)</option>
+        <option value="codex"<% if (it.settings.reviewerProvider === 'codex') { %> selected<% } %>>codex (Codex CLI)</option>
+      </select>
+
+      <label for="model">Model override</label>
+      <input id="model" name="model" type="text" value="<%= it.settings.model %>"
+             placeholder="e.g. claude-sonnet-4-5 (leave blank for default)">
+
+      <label for="ignorePaths">Ignore paths<br><small style="color:var(--muted)">one glob per line</small></label>
+      <textarea id="ignorePaths" name="ignorePaths" rows="4" style="font-family:ui-monospace,SF Mono,Menlo,monospace"
+                placeholder="vendor/**&#10;*.lock&#10;dist/**"><%= it.settings.ignorePaths %></textarea>
+
+      <label for="promptAddendum">Prompt addendum<br><small style="color:var(--muted)">appended to the system prompt for this repo only</small></label>
+      <textarea id="promptAddendum" name="promptAddendum" rows="5"
+                placeholder="e.g. This is a Next.js project — prefer server components."><%= it.settings.promptAddendum %></textarea>
+
+      <label for="maxMentionsPerPr">Max mention re-runs / PR</label>
+      <input id="maxMentionsPerPr" name="maxMentionsPerPr" type="number" min="0" max="100"
+             value="<%= it.settings.maxMentionsPerPr %>" placeholder="(default 3)">
+
+      <label for="skipDrafts">Skip draft PRs</label>
+      <label style="display:flex;align-items:center;gap:8px">
+        <input id="skipDrafts" type="checkbox" name="skipDrafts"<% if (it.settings.skipDrafts) { %> checked<% } %>>
+        Don't auto-review drafts (mentions still trigger)
+      </label>
+
+    </div>
+    <div style="margin-top:16px">
+      <button type="submit" class="btn">Save settings</button>
+    </div>
+  </form>
+</section>
+
+<section style="margin-top:24px">
+  <h2 style="font-size:14px">Recent reviews</h2>
+  <% if (it.recentReviews.length === 0) { %>
+    <p class="empty">No reviews yet. Open a PR and one will appear within a minute.</p>
+  <% } else { %>
+    <table class="table">
+      <thead><tr><th>State</th><th>PR</th><th>Started</th><th></th></tr></thead>
+      <tbody>
+        <% it.recentReviews.forEach(function(r) { %>
+          <tr>
+            <td><span class="state state-<%= r.state %>"><%= r.state %></span></td>
+            <td>#<%= r.prNumber %></td>
+            <td><%= r.createdAt %></td>
+            <td><a href="/reviews/<%= r.id %>">details</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</section>

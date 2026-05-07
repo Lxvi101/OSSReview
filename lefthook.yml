@@ -1,0 +1,17 @@
+# lefthook is preferred over husky: written in Go, no Node-version coupling,
+# faster, and easier multi-language hook management.
+
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      glob: "*.{ts,tsx,js,jsx,json}"
+      run: pnpm biome check --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+    typecheck:
+      glob: "*.ts"
+      run: pnpm typecheck
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm dlx @commitlint/cli --edit {1}

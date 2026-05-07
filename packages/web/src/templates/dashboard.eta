@@ -1,0 +1,36 @@
+<h1>Dashboard</h1>
+
+<section class="cards">
+  <div class="card">
+    <h2>Recent reviews</h2>
+    <% if (it.recentReviews.length === 0) { %>
+      <p class="empty">No reviews yet. Open a PR on a tracked repository to trigger one.</p>
+    <% } else { %>
+      <ul class="review-list">
+        <% it.recentReviews.forEach(function(r) { %>
+          <li>
+            <a href="/reviews/<%= r.id %>">
+              <span class="state state-<%= r.state %>"><%= r.state %></span>
+              <span class="repo"><%= r.repo %></span>
+              <span class="pr">#<%= r.prNumber %></span>
+              <span class="age" title="<%= r.createdAt %>"><%= r.relativeAge %></span>
+            </a>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h2>Queue</h2>
+    <p>In-flight: <strong><%= it.queue.inFlight %></strong></p>
+    <p>Queued: <strong><%= it.queue.queued %></strong></p>
+    <p>DLQ: <strong class="<%= it.queue.dlq > 0 ? 'warn' : '' %>"><%= it.queue.dlq %></strong></p>
+  </div>
+
+  <div class="card">
+    <h2>This month</h2>
+    <p>Reviews: <strong><%= it.month.reviews %></strong></p>
+    <p>Cost: <strong>$<%= it.month.costUsd.toFixed(2) %></strong></p>
+  </div>
+</section>

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "src", "outDir": "dist", "composite": true },
+  "references": [
+    { "path": "../../packages/config" },
+    { "path": "../../packages/core" },
+    { "path": "../../packages/github" },
+    { "path": "../../packages/observability" },
+    { "path": "../../packages/queue" },
+    { "path": "../../packages/reviewer" },
+    { "path": "../../packages/storage" }
+  ],
+  "include": ["src/**/*"],
+  "exclude": ["**/*.test.ts", "dist", "node_modules"]
+}

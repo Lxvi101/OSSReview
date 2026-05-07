@@ -1,0 +1,31 @@
+{
+  "name": "@gcr/github",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "GitHub App: webhook verification, installation tokens, PR review posting.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": "./dist/index.js" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@gcr/core": "workspace:*",
+    "@gcr/observability": "workspace:*",
+    "@octokit/app": "^15.1.0",
+    "@octokit/auth-app": "^7.1.1",
+    "@octokit/plugin-throttling": "^9.3.2",
+    "@octokit/request-error": "^6.1.5",
+    "@octokit/rest": "^21.0.2",
+    "@octokit/webhooks-methods": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

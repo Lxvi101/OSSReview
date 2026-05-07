@@ -1,0 +1,15 @@
+<h1>Audit log</h1>
+
+<table class="table">
+  <thead><tr><th>When</th><th>Actor</th><th>Kind</th><th>Subject</th></tr></thead>
+  <tbody>
+    <% it.events.forEach(function(e) { %>
+      <tr>
+        <td><%= e.at %></td>
+        <td><%= e.actor %></td>
+        <td><%= e.kind %></td>
+        <td><%= e.subjectType ?? '' %> <%= e.subjectId ?? '' %></td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>

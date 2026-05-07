@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-typecheck-test:
+    name: lint + typecheck + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (biome)
+        run: pnpm lint
+
+      - name: Build
+        # build first so generated dist/ + vendor copies exist before
+        # downstream tasks (typecheck, integration tests) run
+        run: pnpm build
+
+      - name: Boundary check (eslint flat config)
+        run: pnpm boundaries
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test (unit + integration)
+        run: pnpm test
+
+  migration-regression:
+    name: migrations apply on fresh + previous-release DB
+    runs-on: ubuntu-latest
+    needs: lint-typecheck-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Enable corepack
+        run: corepack enable
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build storage
+        run: pnpm --filter @gcr/storage build
+      - name: Apply migrations on fresh DB
+        env:
+          DATABASE_PATH: ./fresh.sqlite
+        run: pnpm db:migrate
+      # When a previous release exists, also run against its snapshot. Until
+      # there is one, this step is a no-op.
+      - name: (placeholder) previous-release snapshot test
+        run: echo "no previous-release DB snapshot available yet"
+
+  build-sandbox-image:
+    name: build sandbox image
+    runs-on: ubuntu-latest
+    needs: lint-typecheck-test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build sandbox image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.sandbox
+          push: false
+          tags: gcr-sandbox:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

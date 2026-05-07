@@ -1,0 +1,28 @@
+{
+  "name": "@gcr/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Eta templates + tiny renderer + base layout. No SPA, no build step.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": "./dist/index.js" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && rm -rf dist/templates dist/static && cp -R src/templates dist/templates && cp -R src/static dist/static && node scripts/copy-vendor.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@gcr/core": "workspace:*",
+    "@gcr/observability": "workspace:*",
+    "alpinejs": "3.14.3",
+    "eta": "^3.5.0",
+    "htmx.org": "2.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

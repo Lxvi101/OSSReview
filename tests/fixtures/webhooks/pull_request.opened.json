@@ -1,0 +1,22 @@
+{
+  "action": "opened",
+  "number": 42,
+  "pull_request": {
+    "id": 1000001,
+    "number": 42,
+    "title": "Add a thing",
+    "body": "This PR adds a thing.",
+    "user": { "login": "alice" },
+    "draft": false,
+    "head": { "sha": "1111111111111111111111111111111111111111", "ref": "feature/thing" },
+    "base": { "sha": "0000000000000000000000000000000000000000", "ref": "main" }
+  },
+  "repository": {
+    "id": 67890,
+    "name": "widgets",
+    "full_name": "acme/widgets",
+    "owner": { "login": "acme", "id": 11111 }
+  },
+  "installation": { "id": 12345 },
+  "sender": { "login": "alice", "id": 22222 }
+}

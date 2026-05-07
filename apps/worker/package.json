@@ -1,0 +1,30 @@
+{
+  "name": "@gcr/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Background job processor: pulls jobs from SQLite and runs reviewer providers.",
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node --enable-source-maps dist/main.js",
+    "dev": "node --enable-source-maps --env-file=.env --watch src/main.ts",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@gcr/config": "workspace:*",
+    "@gcr/core": "workspace:*",
+    "@gcr/github": "workspace:*",
+    "@gcr/observability": "workspace:*",
+    "@gcr/queue": "workspace:*",
+    "@gcr/reviewer": "workspace:*",
+    "@gcr/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

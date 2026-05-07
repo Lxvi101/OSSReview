@@ -1,0 +1,48 @@
+# Keep host artifacts out of every Docker build context.
+#
+# Native addons (better-sqlite3, sodium-native, etc.) are compiled for the
+# host arch — copying them into a Linux image causes "invalid ELF header"
+# at runtime. Excluding node_modules forces the in-container `pnpm install`
+# to compile against the image's libc/arch.
+
+# Dependencies — re-installed inside the image
+node_modules
+**/node_modules
+.pnpm-store
+
+# Build outputs — re-built inside the image
+dist
+**/dist
+.turbo
+**/.turbo
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Local-only state
+data
+docker/data
+docker/backups
+**/coverage
+*.log
+logs/
+
+# Secrets & configs that should never reach an image
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# IDE / OS
+.git
+.github
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# Docs and meta — saves a few seconds and keeps the layer cache hot
+*.md
+!README.md
+!CHANGELOG.md
+docs

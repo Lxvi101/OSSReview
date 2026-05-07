@@ -1,0 +1,37 @@
+<h1>System status</h1>
+
+<p>
+  At-a-glance: is the bot ready to review pull requests? Each row is a thing
+  the worker needs to function. Anything red is a blocker.
+</p>
+
+<table class="table">
+  <thead><tr><th></th><th>Component</th><th>Detail</th></tr></thead>
+  <tbody>
+    <% it.checks.forEach(function(c) { %>
+      <tr>
+        <td>
+          <% if (c.status === 'ok') { %>
+            <span class="state state-completed">ok</span>
+          <% } else if (c.status === 'warn') { %>
+            <span class="state state-preparing">warn</span>
+          <% } else { %>
+            <span class="state state-failed">fail</span>
+          <% } %>
+        </td>
+        <td><strong><%= c.name %></strong><br><small><%= c.description %></small></td>
+        <td><%= c.detail %></td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>
+
+<% if (it.allOk) { %>
+  <p><strong>Everything is configured.</strong> Open a PR on a tracked repository to trigger your first review.</p>
+<% } else { %>
+  <p>
+    <strong>One or more components need attention.</strong> Use the links in the
+    table above (or the navigation) to finish setup. The worker will pick up
+    automatically once everything is green — no restart required.
+  </p>
+<% } %>
