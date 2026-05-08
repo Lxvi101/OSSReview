@@ -6,7 +6,7 @@
  *      cookies, secret-shaped fields).
  *   2. This regex pass runs over the serialized line as a belt-and-suspenders
  *      catch for tokens that show up in unexpected places (inside an error
- *      message thrown by Octokit, sandbox stdout, etc.).
+ *      message thrown by Octokit, child-process stderr, etc.).
  *
  * Patterns are conservative but specific — they target known *shapes* of
  * secrets, not "anything that looks long and hex." Earlier versions used a

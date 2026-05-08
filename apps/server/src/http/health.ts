@@ -20,9 +20,7 @@ export async function registerHealthRoutes(app: FastifyInstance, deps: HealthDep
 
   app.get('/ready', async (_req, reply) => {
     try {
-      await deps.db
-        .selectNoFrom((eb) => eb.lit(1).as('one'))
-        .executeTakeFirstOrThrow();
+      await deps.db.selectNoFrom((eb) => eb.lit(1).as('one')).executeTakeFirstOrThrow();
       reply.code(200).send({ status: 'ready' });
     } catch (err) {
       reply.code(503).send({ status: 'not_ready', error: (err as Error).message });

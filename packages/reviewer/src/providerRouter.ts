@@ -1,3 +1,4 @@
+import { FatalError } from '@gcr/core';
 import type { ReviewResult, Reviewer, ReviewerInput } from './port.js';
 
 export type ReviewerProvider = 'claude' | 'codex';
@@ -19,11 +20,19 @@ export class ProviderRouterReviewer implements Reviewer {
   }
 
   private select(provider: ReviewerProvider | undefined): Reviewer {
-    switch (provider ?? this.opts.defaultProvider) {
+    const chosen = provider ?? this.opts.defaultProvider;
+    switch (chosen) {
       case 'claude':
         return this.opts.claude;
       case 'codex':
         return this.opts.codex;
+      default: {
+        const _exhaustive: never = chosen;
+        throw new FatalError(
+          'reviewer.unknown_provider',
+          `unknown reviewer provider: ${String(_exhaustive)}`,
+        );
+      }
     }
   }
 }

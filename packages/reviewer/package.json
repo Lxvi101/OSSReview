@@ -3,14 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Reviewer port + local Claude/Codex adapters + legacy Docker sandbox runner.",
+  "description": "Reviewer port + local Claude/Codex CLI adapters.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
     "./claude": "./dist/claude/index.js",
     "./codex": "./dist/codex/index.js",
-    "./sandbox": "./dist/sandbox/index.js",
     "./testing": "./dist/testing/index.js"
   },
   "scripts": {
@@ -23,11 +22,10 @@
     "@gcr/core": "workspace:*",
     "@gcr/observability": "workspace:*",
     "@anthropic-ai/claude-agent-sdk": "^0.1.0",
-    "dockerode": "^4.0.2",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.23.5"
   },
   "devDependencies": {
-    "@types/dockerode": "^3.3.31",
     "@types/node": "^20.14.0",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"

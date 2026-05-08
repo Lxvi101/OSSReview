@@ -15,12 +15,42 @@ interface FixtureCase {
 }
 
 const CASES: FixtureCase[] = [
-  { file: 'pull_request.opened.json', event: 'pull_request', action: 'opened', expectedKind: 'enqueue_review' },
-  { file: 'pull_request.synchronize.json', event: 'pull_request', action: 'synchronize', expectedKind: 'enqueue_review' },
-  { file: 'pull_request.draft.json', event: 'pull_request', action: 'opened', expectedKind: 'ignore' },
-  { file: 'issue_comment.created.mention.json', event: 'issue_comment', action: 'created', expectedKind: 'enqueue_mention_review' },
-  { file: 'issue_comment.created.no_mention.json', event: 'issue_comment', action: 'created', expectedKind: 'ignore' },
-  { file: 'installation.created.json', event: 'installation', action: 'created', expectedKind: 'install_repos' },
+  {
+    file: 'pull_request.opened.json',
+    event: 'pull_request',
+    action: 'opened',
+    expectedKind: 'enqueue_review',
+  },
+  {
+    file: 'pull_request.synchronize.json',
+    event: 'pull_request',
+    action: 'synchronize',
+    expectedKind: 'enqueue_review',
+  },
+  {
+    file: 'pull_request.draft.json',
+    event: 'pull_request',
+    action: 'opened',
+    expectedKind: 'ignore',
+  },
+  {
+    file: 'issue_comment.created.mention.json',
+    event: 'issue_comment',
+    action: 'created',
+    expectedKind: 'enqueue_mention_review',
+  },
+  {
+    file: 'issue_comment.created.no_mention.json',
+    event: 'issue_comment',
+    action: 'created',
+    expectedKind: 'ignore',
+  },
+  {
+    file: 'installation.created.json',
+    event: 'installation',
+    action: 'created',
+    expectedKind: 'install_repos',
+  },
   { file: 'ping.json', event: 'ping', action: null, expectedKind: 'ignore' },
 ];
 

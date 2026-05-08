@@ -1,8 +1,4 @@
-import {
-  type GithubAppClient,
-  asGithubInstallationId,
-  asGithubRepoId,
-} from '@gcr/core';
+import { type GithubAppClient, asGithubInstallationId, asGithubRepoId } from '@gcr/core';
 import type { Logger } from '@gcr/observability';
 import type { Handler } from '@gcr/queue';
 import type { Repositories } from '@gcr/storage';

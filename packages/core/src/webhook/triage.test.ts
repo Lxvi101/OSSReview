@@ -115,9 +115,11 @@ describe('triage', () => {
   });
 
   it('routes installation events to install_repos', () => {
-    expect(triage({ ...base, event: 'installation', action: 'created' }).kind).toBe('install_repos');
-    expect(
-      triage({ ...base, event: 'installation_repositories', action: 'added' }).kind,
-    ).toBe('install_repos');
+    expect(triage({ ...base, event: 'installation', action: 'created' }).kind).toBe(
+      'install_repos',
+    );
+    expect(triage({ ...base, event: 'installation_repositories', action: 'added' }).kind).toBe(
+      'install_repos',
+    );
   });
 });

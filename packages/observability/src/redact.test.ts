@@ -17,7 +17,7 @@ describe('redactTokens', () => {
   it('redacts v1.<hex> installation tokens', () => {
     // Built from parts so the literal v1.<40-hex> shape never appears in source
     // (GitHub push protection flags that pattern even in obvious test fixtures).
-    const fakeInstallationToken = 'v1.' + 'a'.repeat(40);
+    const fakeInstallationToken = `v1.${'a'.repeat(40)}`;
     expect(redactTokens(`Authorization: token ${fakeInstallationToken}`)).toContain('[REDACTED]');
   });
 

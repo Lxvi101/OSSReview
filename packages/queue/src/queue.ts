@@ -4,16 +4,10 @@ import type { Kysely, Transaction } from 'kysely';
 import type { EnqueueInput, Job } from './types.js';
 
 /**
- * Durable job queue on SQLite.
+ * Durable job queue on SQLite. ~300 LOC; single-tenant.
  *
- * Picking semantics:
- *   - workers poll: `SELECT ... WHERE state='queued' AND run_after<=now ORDER BY priority DESC, id LIMIT 1`
- *   - mark `state='running', locked_by=workerId, locked_at=now` in same tx
- *   - SQLite WAL handles writer serialization
- *
- * Why hand-rolled: BullMQ requires Redis (a second moving part); pg-boss is
- * Postgres-only. ~300 lines on the database we already have is the right
- * trade-off for a small single-tenant app. (See ADR 0004.)
+ * Pickup: `SELECT ... WHERE state='queued' AND run_after<=now ORDER BY priority DESC, id LIMIT 1`
+ * then atomic `UPDATE ... WHERE state='queued'` claim.
  */
 export class JobQueue {
   constructor(
@@ -22,9 +16,8 @@ export class JobQueue {
   ) {}
 
   /**
-   * Enqueue inside an externally-controlled transaction. This is the variant
-   * the webhook handler uses so that the WebhookDelivery row and the Job row
-   * land atomically. Returns the (existing or new) job id.
+   * Enqueue inside a caller-managed transaction. The webhook handler uses
+   * this so the WebhookDelivery row and the Job row land atomically.
    */
   async enqueueIn<TName extends string, TData>(
     tx: Transaction<DB>,
@@ -48,7 +41,6 @@ export class JobQueue {
     if ((result.numInsertedOrUpdatedRows ?? 0n) > 0n && result.insertId !== undefined) {
       return { id: Number(result.insertId), created: true };
     }
-    // Fetch the existing one by unique_key.
     if (input.uniqueKey) {
       const existing = await tx
         .selectFrom('jobs')
@@ -69,8 +61,7 @@ export class JobQueue {
 
   /**
    * Atomically pick one job and mark it running. Returns null if nothing's
-   * ready. Implemented as a single transaction with optimistic update on
-   * `state='queued'`.
+   * ready.
    */
   async pickOne(workerId: string): Promise<Job | null> {
     return this.db.transaction().execute(async (tx) => {
@@ -93,7 +84,12 @@ export class JobQueue {
         .executeTakeFirst();
 
       if ((claimed.numUpdatedRows ?? 0n) === 0n) return null;
-      return this.toDomain({ ...candidate, state: 'running', locked_by: workerId, locked_at: this.clock.now() });
+      return this.toDomain({
+        ...candidate,
+        state: 'running',
+        locked_by: workerId,
+        locked_at: this.clock.now(),
+      });
     });
   }
 
@@ -111,8 +107,8 @@ export class JobQueue {
   }
 
   /**
-   * Schedule a retry with exponential backoff capped at 1h.
-   * `attempts` is incremented; if it would exceed `max_attempts`, mark failed.
+   * Schedule a retry with exponential backoff capped at 1h, OR mark failed
+   * if attempts have reached max_attempts.
    */
   async markFailedOrRequeue(id: number, error: string): Promise<{ requeued: boolean }> {
     return this.db.transaction().execute(async (tx) => {
@@ -158,11 +154,27 @@ export class JobQueue {
   }
 
   /**
-   * Sweep for stale locks. Any job in `running` whose `locked_at` is older
-   * than `staleMs` is requeued (with the attempt counter NOT incremented —
-   * the worker died, that's not the job's fault).
-   *
-   * Called periodically by the worker, and once at startup.
+   * Mark a job permanently failed without going through the retry math.
+   * Used by the worker loop for non-retryable errors so a `FatalError` can't
+   * be requeued and picked up by another worker.
+   */
+  async markFailed(id: number, error: string): Promise<void> {
+    await this.db
+      .updateTable('jobs')
+      .set({
+        state: 'failed',
+        last_error: error.slice(0, 8000),
+        completed_at: this.clock.now(),
+        locked_by: null,
+        locked_at: null,
+      })
+      .where('id', '=', id)
+      .execute();
+  }
+
+  /**
+   * Sweep stale locks. Any job in `running` whose `locked_at` is older than
+   * `staleMs` is requeued (attempts NOT incremented — the worker died).
    */
   async releaseStaleLocks(staleMs: number): Promise<number> {
     const cutoff = new Date(Date.now() - staleMs).toISOString();
@@ -176,8 +188,8 @@ export class JobQueue {
       })
       .where('state', '=', 'running')
       .where('locked_at', '<', cutoff)
-      .execute();
-    return Number(result.reduce((acc, r) => acc + (r.numUpdatedRows ?? 0n), 0n));
+      .executeTakeFirst();
+    return Number(result.numUpdatedRows ?? 0n);
   }
 
   async dlqCount(name?: string): Promise<number> {
@@ -200,11 +212,43 @@ export class JobQueue {
   }
 
   /** For UI / DLQ list. */
-  async list(opts: { state?: 'queued' | 'running' | 'completed' | 'failed'; limit?: number } = {}): Promise<Job[]> {
-    let q = this.db.selectFrom('jobs').selectAll().orderBy('id', 'desc').limit(opts.limit ?? 50);
+  async list(
+    opts: { state?: 'queued' | 'running' | 'completed' | 'failed'; limit?: number } = {},
+  ): Promise<Job[]> {
+    let q = this.db
+      .selectFrom('jobs')
+      .selectAll()
+      .orderBy('id', 'desc')
+      .limit(opts.limit ?? 50);
     if (opts.state) q = q.where('state', '=', opts.state);
     const rows = await q.execute();
     return rows.map((r) => this.toDomain(r));
+  }
+
+  /** Re-queue a failed job (bumps run_after to now, keeps attempts so a permanently broken job stays bounded). */
+  async requeue(id: number): Promise<{ requeued: boolean }> {
+    const result = await this.db
+      .updateTable('jobs')
+      .set({
+        state: 'queued',
+        run_after: this.clock.now(),
+        locked_by: null,
+        locked_at: null,
+      })
+      .where('id', '=', id)
+      .where('state', '=', 'failed')
+      .executeTakeFirst();
+    return { requeued: (result.numUpdatedRows ?? 0n) > 0n };
+  }
+
+  /** Delete completed/failed jobs older than cutoff. Returns count deleted. */
+  async deleteOlderThan(cutoffIso: string): Promise<number> {
+    const result = await this.db
+      .deleteFrom('jobs')
+      .where('state', 'in', ['completed', 'failed'])
+      .where('completed_at', '<', cutoffIso)
+      .executeTakeFirst();
+    return Number(result.numDeletedRows ?? 0n);
   }
 
   private toDomain(row: {

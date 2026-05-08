@@ -1,20 +1,16 @@
 /**
- * Composition root for the worker process.
+ * Worker composition root.
  *
- * Boot lifecycle:
+ * Boot:
  *   env → logger
- *       → SQLite (open + verify migrations are current)
+ *       → SQLite (open, run migrations)
  *       → Repositories
  *       → JobQueue
- *       → wait for GitHub App credentials in the settings table (poll;
- *         never crash — the operator may not have completed `/setup` yet)
+ *       → crash recovery: any non-terminal review_runs become 'failed'
+ *       → wait for GitHub App credentials in the settings table
  *       → InstallationTokenCache + GithubClient
- *       → local subscription-backed reviewer provider router
+ *       → reviewer router
  *       → handlers, runWorkerLoop
- *
- * Why the worker waits instead of crashing: with `docker compose up` the
- * worker and server start at the same time, but the operator hasn't run
- * the setup wizard yet. We don't want a crash-loop until they do.
  */
 
 import { hostname } from 'node:os';
@@ -29,9 +25,9 @@ import { CodexReviewer } from '@gcr/reviewer/codex';
 import {
   type Repositories,
   SecretBox,
-  currentVersion,
   makeRepositories,
   openDatabase,
+  runMigrations,
 } from '@gcr/storage';
 import { makeReconcileInstallationReposHandler } from './handlers/reconcileInstallationRepos.js';
 import { makeReviewPrHandler } from './handlers/reviewPr.js';
@@ -48,10 +44,9 @@ async function main(): Promise<void> {
   logger.info({ node: process.version, pid: process.pid }, 'worker.boot');
 
   const handle = openDatabase({ path: env.DATABASE_PATH });
-  if (currentVersion(handle) === 0) {
-    // The server runs migrations at boot — wait it out instead of crashing.
-    await waitForMigrations(handle, logger);
-  }
+  // Idempotent: server may have already run migrations. Either process can
+  // own them; whichever boots first applies them.
+  runMigrations(handle, { logger });
 
   const clock = new SystemClock();
   const secretBox = new SecretBox(env.SECRETS_KEY);
@@ -67,8 +62,24 @@ async function main(): Promise<void> {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
 
-  // Wait until the operator has finished `/setup` (provides GitHub creds).
-  // Reviewer credentials come from the local Claude/Codex CLI homes.
+  // Crash recovery: any review_run still in a non-terminal state on boot
+  // belongs to a worker that died. Mark them failed with a clear cause; the
+  // user can retry by mentioning the bot. We use the freshest state per row
+  // so a cancel-request that landed first wins.
+  const stuck = await repos.reviewRuns.findNonTerminal();
+  for (const r of stuck) {
+    try {
+      await repos.reviewRuns.transition(r.id, r.state, {
+        state: 'failed',
+        errorClass: 'WorkerRestart',
+        errorMessage: `worker restarted while in ${r.state}`,
+      });
+      logger.warn({ run_id: r.id, prev_state: r.state }, 'review.recovered_to_failed');
+    } catch (err: unknown) {
+      logger.warn({ run_id: r.id, err }, 'review.recover_failed');
+    }
+  }
+
   const secrets = await waitForCredentials(repos, logger, controller.signal);
   if (controller.signal.aborted) {
     await handle.destroy();
@@ -136,20 +147,6 @@ async function main(): Promise<void> {
 
 const POLL_MS = 5_000;
 
-async function waitForMigrations(
-  handle: ReturnType<typeof openDatabase>,
-  logger: Logger,
-): Promise<void> {
-  let warned = false;
-  while (currentVersion(handle) === 0) {
-    if (!warned) {
-      logger.info({}, 'worker.boot.waiting_for_migrations');
-      warned = true;
-    }
-    await sleep(POLL_MS);
-  }
-}
-
 async function waitForCredentials(
   repos: Repositories,
   logger: Logger,
@@ -166,17 +163,12 @@ async function waitForCredentials(
     }
 
     if (!warned) {
-      logger.warn(
-        {
-          have_github_app: !!(appId && privateKey),
-        },
-        'worker.boot.waiting_for_credentials — finish /setup',
-      );
+      logger.warn({}, 'worker.boot.waiting_for_credentials — finish /setup');
       warned = true;
     }
     await sleep(POLL_MS);
   }
-  // Aborted: return a placeholder; caller checks `signal.aborted`.
+  // Aborted: caller checks signal.aborted.
   return { appId: 0, privateKey: '' };
 }
 
@@ -185,6 +177,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 void main().catch((err: unknown) => {
-  process.stderr.write(`fatal: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`);
+  process.stderr.write(
+    `fatal: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`,
+  );
   process.exit(1);
 });

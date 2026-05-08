@@ -11,7 +11,6 @@ import {
   asGithubRepoId,
   asIdempotencyKey,
   autoIdempotencyKey,
-  checkCostCap,
   checkMentionCap,
   format,
   isResolved,
@@ -25,11 +24,10 @@ import type { Reviewer } from '@gcr/reviewer';
 import type { Repositories } from '@gcr/storage';
 
 /**
- * The review handler — the orchestration spine.
+ * The review handler. One factory, two job names (auto vs mention).
  *
- * One handler factory, two job names (auto vs mention), differentiated by
- * the `mention` flag. The flag changes idempotency-key construction and the
- * post-completion behaviour (a mention also reacts on the comment).
+ * The `mention` flag changes idempotency-key construction (per-comment vs
+ * per-SHA) and adds an "eyes" reaction on the triggering comment.
  */
 
 export interface ReviewHandlerDeps {
@@ -38,8 +36,6 @@ export interface ReviewHandlerDeps {
   readonly reviewer: Reviewer;
   readonly metrics: Metrics;
   readonly logger: Logger;
-  /** Marker embedded in the review body so we can find an existing review on resume. */
-  readonly markerPrefix?: string;
   readonly mention?: boolean;
 }
 
@@ -48,16 +44,13 @@ interface ReviewJobData {
 }
 
 /**
- * Sentinel SHAs returned by `extractPrInfo` when the webhook payload is an
- * `issue_comment` (which does not carry head/base). The handler detects these
- * and fetches the PR via the GitHub API to fill them in.
+ * Sentinel SHAs returned by `extractPrInfo` for `issue_comment` payloads
+ * (which lack head/base). The handler detects them and fills via the API.
  */
 const MENTION_PLACEHOLDER_HEAD = 'MENTION_UNKNOWN_HEAD';
 const MENTION_PLACEHOLDER_BASE = 'MENTION_UNKNOWN_BASE';
 
 export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, ReviewJobData> {
-  const marker = deps.markerPrefix ?? '<!--gcr-review-marker:';
-
   return async ({ job, logger, signal }) => {
     const { deliveryId } = job.data;
     const delivery = await deps.repos.webhookDeliveries.byDeliveryId(deliveryId);
@@ -66,14 +59,15 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
     }
     const payload = JSON.parse(delivery.payloadJson) as Record<string, unknown>;
 
-    // ── 1. Resolve the PR + repo ──────────────────────────────────────────
     const prInfo = extractPrInfo(payload, deps.mention === true);
     if (!prInfo) {
       logger.warn({ deliveryId }, 'review.no_pr_info');
-      return; // nothing to do
+      return;
     }
 
-    const repository = await deps.repos.repositories.byGithubId(asGithubRepoId(prInfo.githubRepoId));
+    const repository = await deps.repos.repositories.byGithubId(
+      asGithubRepoId(prInfo.githubRepoId),
+    );
     if (!repository) {
       throw new FatalError(
         'review.unknown_repo',
@@ -81,11 +75,11 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
       );
     }
 
-    // Mention webhooks (issue_comment) don't carry head/base SHAs. Fetch the
-    // PR snapshot to fill them in before we go any further. Doing it here
-    // keeps everything downstream identical to the auto path.
     let prData = prInfo;
-    if (prData.headSha === MENTION_PLACEHOLDER_HEAD || prData.baseSha === MENTION_PLACEHOLDER_BASE) {
+    if (
+      prData.headSha === MENTION_PLACEHOLDER_HEAD ||
+      prData.baseSha === MENTION_PLACEHOLDER_BASE
+    ) {
       const tok = await deps.github.installationToken(repository.installationId);
       const snap = await deps.github.getPullRequest({
         token: tok,
@@ -113,7 +107,6 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
       title: prData.title,
     });
 
-    // ── 2. Policy gate ────────────────────────────────────────────────────
     const trigger = deps.mention ? 'mention' : 'auto';
     const decision = shouldReview({
       repo: repository,
@@ -132,12 +125,8 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
       return;
     }
 
-    // ── 3. Per-PR mention rate cap ─────────────────────────────────────────
     if (deps.mention) {
-      const existing = await deps.repos.reviewRuns.countMentionRunsForHead(
-        pr.id,
-        pr.headSha,
-      );
+      const existing = await deps.repos.reviewRuns.countMentionRunsForHead(pr.id, pr.headSha);
       const cap = checkMentionCap({
         existingMentionRunsForHead: existing,
         ...(repository.settings.maxMentionsPerPr !== undefined
@@ -157,38 +146,13 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
       }
     }
 
-    // ── 4. Daily $-cap (mention runs are NOT exempt) ───────────────────────
-    const dailyCapMicrosSetting = await deps.repos.settings.getPlain<number>(
-      'cost.daily_cap_micros',
-    );
-    if (dailyCapMicrosSetting != null) {
-      const sinceIso = startOfTodayUtc();
-      const spent = await deps.repos.reviewRuns.sumCostMicrosSince(sinceIso);
-      const cap = checkCostCap({
-        spentTodayMicros: spent,
-        dailyCapMicros: dailyCapMicrosSetting,
-      });
-      if (!cap.allowed) {
-        await deps.repos.auditLog.record({
-          actor: 'worker',
-          kind: 'cost.cap_reached',
-          subjectType: 'pull_request',
-          subjectId: String(pr.id),
-          data: { spent, cap: dailyCapMicrosSetting },
-        });
-        logger.warn({ spent, cap: dailyCapMicrosSetting }, 'review.skipped.cost_cap');
-        return;
-      }
-    }
-
-    // ── 5. Idempotent run upsert ──────────────────────────────────────────
     const key: IdempotencyKey = deps.mention
       ? prInfo.commentId !== undefined
         ? mentionIdempotencyKey(asGithubCommentId(prInfo.commentId))
         : asIdempotencyKey(`mention:noid:${deliveryId}`)
       : autoIdempotencyKey(repository.id, pr.githubPrNumber, pr.headSha);
 
-    const triggeredBy = deps.mention ? prInfo.commenterLogin ?? null : null;
+    const triggeredBy = deps.mention ? (prInfo.commenterLogin ?? null) : null;
 
     const { run } = await deps.repos.reviewRuns.upsertByIdempotency({
       pullRequestId: pr.id,
@@ -204,7 +168,6 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
       return;
     }
 
-    // ── 4. React eyes if this came from a mention ─────────────────────────
     if (deps.mention && prInfo.commentId !== undefined) {
       const tok = await deps.github.installationToken(repository.installationId);
       await deps.github.reactToComment({
@@ -216,25 +179,88 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
       });
     }
 
-    // ── 5. Drive the state machine ────────────────────────────────────────
     return withContextAsync({ reviewRunId: run.id }, async () => {
       const start = Date.now();
       const token = await deps.github.installationToken(repository.installationId);
       const owner = repository.owner;
       const repo = repository.name;
+      const runId = run.id;
 
-      const tmp = await mkdtemp(join(tmpdir(), `gcr-clone-${run.id}-`));
+      // Wire cancel signal: if the user clicks Cancel in the UI, the API
+      // sets cancel_requested_at; the worker polls every 2s and aborts.
+      const cancelController = new AbortController();
+      const combined = mergeAbort([signal, cancelController.signal]);
+      const cancelPoll = setInterval(() => {
+        void deps.repos.reviewRuns.byId(runId).then((r) => {
+          if (r?.cancelRequestedAt && !cancelController.signal.aborted) {
+            cancelController.abort();
+          }
+        });
+      }, 2000);
+
+      const emit = (
+        kind:
+          | 'phase'
+          | 'assistant_text'
+          | 'assistant_thinking'
+          | 'tool_use'
+          | 'tool_result'
+          | 'sdk_status'
+          | 'error',
+        payload: Record<string, unknown>,
+      ): void => {
+        void deps.repos.reviewEvents
+          .append({ reviewRunId: runId, kind, payload })
+          .catch((err: unknown) => logger.warn({ err, kind }, 'review_event.append_failed'));
+      };
+
+      const tmp = await mkdtemp(join(tmpdir(), `gcr-clone-${runId}-`));
       let lastState = run.state;
 
-      try {
-        const r1 = await deps.repos.reviewRuns.transition(run.id, lastState, {
-          state: 'preparing',
-          attemptsIncrement: true,
-        });
-        lastState = r1.state;
+      const wasCancelled = (): boolean => cancelController.signal.aborted;
 
-        const r2 = await deps.repos.reviewRuns.transition(run.id, lastState, { state: 'fetching' });
-        lastState = r2.state;
+      const transitionTo = async (
+        next: 'preparing' | 'fetching' | 'reviewing' | 'posting' | 'completed' | 'cancelled',
+        patch: Parameters<typeof deps.repos.reviewRuns.transition>[2] = { state: next },
+      ): Promise<void> => {
+        const result = await deps.repos.reviewRuns.transition(runId, lastState, {
+          ...patch,
+          state: next,
+        });
+        lastState = result.state;
+      };
+
+      const finishAsCancelled = async (reason: string): Promise<void> => {
+        emit('phase', { state: 'cancelled', reason });
+        try {
+          await transitionTo('cancelled', { state: 'cancelled', stateReason: reason });
+        } catch (e: unknown) {
+          logger.error({ err: e }, 'review.transition_to_cancelled_failed');
+        }
+        await deps.repos.auditLog.record({
+          actor: 'worker',
+          kind: 'review.cancelled',
+          subjectType: 'review_run',
+          subjectId: String(runId),
+          data: { reason },
+        });
+        deps.metrics.reviewRunsTotal.inc({ state: 'cancelled', trigger });
+      };
+
+      try {
+        await transitionTo('preparing', { state: 'preparing', attemptsIncrement: true });
+        emit('phase', { state: 'preparing' });
+
+        if (wasCancelled()) {
+          await finishAsCancelled('cancel_requested');
+          return;
+        }
+
+        await transitionTo('fetching');
+        emit('phase', {
+          state: 'fetching',
+          message: `cloning ${owner}/${repo}@${pr.headSha.slice(0, 7)}`,
+        });
         const { workspaceDir } = await deps.github.cloneHead({
           token,
           owner,
@@ -249,12 +275,16 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
           base: pr.baseSha,
           head: pr.headSha,
         });
+        emit('phase', { state: 'fetching', message: `diff: ${diff.length} bytes` });
 
-        const r3 = await deps.repos.reviewRuns.transition(run.id, lastState, { state: 'reviewing' });
-        lastState = r3.state;
+        if (wasCancelled()) {
+          await finishAsCancelled('cancel_requested');
+          return;
+        }
 
-        // Switch to summary mode when the diff is huge — caps cost on a PR
-        // that touches a vendored library / lockfile / generated file.
+        await transitionTo('reviewing');
+        emit('phase', { state: 'reviewing' });
+
         const diffMode = selectDiffMode(diff.length);
         const summaryAddendum =
           diffMode === 'summary'
@@ -276,24 +306,35 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
             baseSha: pr.baseSha,
           },
           settings: {
-            ...(repository.settings.model !== undefined ? { model: repository.settings.model } : {}),
+            ...(repository.settings.model !== undefined
+              ? { model: repository.settings.model }
+              : {}),
             ...(repository.settings.reviewerProvider !== undefined
               ? { reviewerProvider: repository.settings.reviewerProvider }
               : {}),
             ...(promptAddendum ? { promptAddendum } : {}),
           },
-          signal,
+          onEvent: (e) => emit(e.kind, e.payload),
+          signal: combined,
         });
 
-        const r4 = await deps.repos.reviewRuns.transition(run.id, lastState, {
+        if (wasCancelled()) {
+          await finishAsCancelled('cancel_requested');
+          return;
+        }
+
+        await transitionTo('posting', {
           state: 'posting',
           model: result.meta.model ?? null,
           reviewerVersion: result.meta.reviewerVersion,
         });
-        lastState = r4.state;
+        emit('phase', {
+          state: 'posting',
+          findings: result.findings.length,
+          verdict: result.summary.verdict,
+        });
 
         const formatted = format(result.summary, result.findings, repository.settings);
-        const summaryWithMarker = `${marker}${run.id}-->\n${formatted.summaryBody}`;
 
         const posted = await deps.github.postReview(
           {
@@ -301,7 +342,7 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
             repo,
             prNumber: pr.githubPrNumber,
             headSha: pr.headSha,
-            summaryBody: summaryWithMarker,
+            summaryBody: formatted.summaryBody,
             verdict: formatted.verdict,
             inlineComments: formatted.inlineComments,
           },
@@ -310,7 +351,7 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
 
         const nowIso = new Date().toISOString();
         await deps.repos.reviewRuns.saveComments(
-          run.id,
+          runId,
           formatted.inlineComments.map((c, i) => ({
             filePath: c.path,
             lineStart: c.line,
@@ -322,20 +363,18 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
           })),
         );
 
-        await deps.repos.reviewRuns.transition(run.id, lastState, {
+        await transitionTo('completed', {
           state: 'completed',
           githubReviewId: posted.githubReviewId,
           durationMs: Date.now() - start,
-          ...(result.meta.costUsdMicros !== undefined
-            ? { costUsdMicros: result.meta.costUsdMicros }
-            : {}),
         });
+        emit('phase', { state: 'completed', durationMs: Date.now() - start });
 
         await deps.repos.auditLog.record({
           actor: 'worker',
           kind: 'review.posted',
           subjectType: 'review_run',
-          subjectId: String(run.id),
+          subjectId: String(runId),
           data: { findings: formatted.inlineComments.length },
         });
 
@@ -345,14 +384,21 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
           (Date.now() - start) / 1000,
         );
       } catch (err) {
+        if (wasCancelled()) {
+          await finishAsCancelled('cancel_requested');
+          return;
+        }
         const message = err instanceof Error ? err.message : String(err);
         const errClass = err instanceof Error ? err.constructor.name : 'unknown';
-        // Best effort: try to land in `failed`. If the optimistic lock fights us
-        // (some other worker already touched the row) we log and rethrow.
-        const fresh = await deps.repos.reviewRuns.byId(run.id);
+        emit('error', { class: errClass, message: message.slice(0, 4000) });
+        emit('phase', { state: 'failed', error: errClass });
+
+        // Use the freshest state in case some other writer (e.g. cancel)
+        // already touched the row.
+        const fresh = await deps.repos.reviewRuns.byId(runId);
         const from = fresh?.state ?? lastState;
         await deps.repos.reviewRuns
-          .transition(run.id, from, {
+          .transition(runId, from, {
             state: 'failed',
             errorClass: errClass,
             errorMessage: message.slice(0, 8000),
@@ -364,22 +410,31 @@ export function makeReviewPrHandler(deps: ReviewHandlerDeps): Handler<string, Re
           actor: 'worker',
           kind: 'review.failed',
           subjectType: 'review_run',
-          subjectId: String(run.id),
+          subjectId: String(runId),
           data: { error: errClass, message: message.slice(0, 500) },
         });
         deps.metrics.reviewRunsTotal.inc({ state: 'failed', trigger });
         throw err;
       } finally {
-        await rm(tmp, { recursive: true, force: true }).catch(() => {/* swallow */});
+        clearInterval(cancelPoll);
+        await rm(tmp, { recursive: true, force: true }).catch(() => {
+          /* swallow */
+        });
       }
     });
   };
 }
 
-/** Midnight UTC of the current day, ISO-8601. */
-function startOfTodayUtc(): string {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+function mergeAbort(signals: ReadonlyArray<AbortSignal>): AbortSignal {
+  const c = new AbortController();
+  for (const s of signals) {
+    if (s.aborted) {
+      c.abort();
+      return c.signal;
+    }
+    s.addEventListener('abort', () => c.abort(), { once: true });
+  }
+  return c.signal;
 }
 
 interface ExtractedPrInfo {
@@ -419,12 +474,8 @@ function extractPrInfo(
           draft?: boolean;
         }
       | undefined;
-    const comment = payload.comment as
-      | { id?: number; user?: { login?: string } }
-      | undefined;
+    const comment = payload.comment as { id?: number; user?: { login?: string } } | undefined;
     if (!issue?.number || !issue.pull_request) return null;
-    // The issue_comment payload doesn't carry head/base SHAs. Return sentinels;
-    // the handler detects them and calls GithubAppClient.getPullRequest to fill in.
     return {
       githubRepoId,
       owner,

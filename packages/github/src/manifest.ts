@@ -95,7 +95,8 @@ export function preflightPublicUrl(input: string): UrlPreflight {
     return {
       ok: false,
       reason: `"${input}" is not a valid URL.`,
-      suggestion: 'Set PUBLIC_URL to something like https://smee.io/abc123 or https://your-domain.example.',
+      suggestion:
+        'Set PUBLIC_URL to something like https://smee.io/abc123 or https://your-domain.example.',
     };
   }
 

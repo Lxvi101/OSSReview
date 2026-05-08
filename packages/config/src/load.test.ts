@@ -5,7 +5,6 @@ const valid = {
   PUBLIC_URL: 'http://localhost:3000',
   SESSION_SECRET: 'a'.repeat(48),
   SECRETS_KEY: '0'.repeat(64),
-  SANDBOX_IMAGE: 'ghcr.io/x/y@sha256:deadbeef',
 };
 
 describe('parseBootEnv', () => {
@@ -18,7 +17,7 @@ describe('parseBootEnv', () => {
       expect(result.value.REVIEWER_PROVIDER).toBe('claude');
       expect(result.value.CLAUDE_CODE_BINARY).toBe('claude');
       expect(result.value.CODEX_BINARY).toBe('codex');
-      expect(result.value.SANDBOX_TIMEOUT_MS).toBe(20 * 60 * 1000);
+      expect(result.value.REVIEWER_TIMEOUT_MS).toBe(20 * 60 * 1000);
     }
   });
 

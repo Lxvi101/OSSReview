@@ -14,15 +14,12 @@ export class Metrics {
 
   readonly reviewRunsTotal: Counter<'state' | 'trigger'>;
   readonly reviewRunDurationSeconds: Histogram<'state'>;
-  readonly reviewCostUsd: Counter<'model'>;
 
   readonly jobsInFlight: Gauge<'name'>;
   readonly jobsDlq: Gauge<'name'>;
 
   readonly githubApiErrorsTotal: Counter<'endpoint' | 'status'>;
   readonly githubRateLimitRemaining: Gauge<'resource'>;
-
-  readonly sandboxActive: Gauge<string>;
 
   constructor() {
     this.registry = new Registry();
@@ -58,13 +55,6 @@ export class Metrics {
       registers: [this.registry],
     });
 
-    this.reviewCostUsd = new Counter({
-      name: 'gcr_review_cost_usd',
-      help: 'Cumulative LLM cost in USD by model',
-      labelNames: ['model'],
-      registers: [this.registry],
-    });
-
     this.jobsInFlight = new Gauge({
       name: 'gcr_jobs_in_flight',
       help: 'Currently running jobs by name',
@@ -90,12 +80,6 @@ export class Metrics {
       name: 'gcr_github_rate_limit_remaining',
       help: 'Remaining GitHub API quota by resource (core, search, ...)',
       labelNames: ['resource'],
-      registers: [this.registry],
-    });
-
-    this.sandboxActive = new Gauge({
-      name: 'gcr_sandbox_active',
-      help: 'Currently running sandbox containers',
       registers: [this.registry],
     });
   }

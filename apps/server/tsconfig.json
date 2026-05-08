@@ -7,8 +7,7 @@
     { "path": "../../packages/github" },
     { "path": "../../packages/observability" },
     { "path": "../../packages/queue" },
-    { "path": "../../packages/storage" },
-    { "path": "../../packages/web" }
+    { "path": "../../packages/storage" }
   ],
   "include": ["src/**/*"],
   "exclude": ["**/*.test.ts", "dist", "node_modules"]

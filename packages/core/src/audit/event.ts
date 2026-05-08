@@ -23,13 +23,14 @@ export type AuditKind =
   | 'review.posted'
   | 'review.failed'
   | 'review.retried'
+  | 'review.cancel_requested'
   | 'review.cancelled'
   | 'webhook.received'
   | 'webhook.signature_invalid'
   | 'secrets.rotated'
   | 'admin.signed_in'
   | 'admin.signed_out'
-  | 'cost.cap_reached';
+  | 'maintenance.prune_runs';
 
 /** What an adapter receives when something needs auditing. */
 export interface NewAuditEvent {

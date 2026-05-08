@@ -13,7 +13,7 @@ import { runMigrations } from './run.js';
 async function main(): Promise<void> {
   const cmd = process.argv[2];
   if (cmd !== 'up') {
-    process.stderr.write(`usage: gcr-migrate up [--dry-run]\n`);
+    process.stderr.write('usage: gcr-migrate up [--dry-run]\n');
     process.exit(64);
   }
   const dryRun = process.argv.includes('--dry-run');

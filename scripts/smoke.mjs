@@ -77,7 +77,9 @@ async function main() {
   try {
     const r = await get('/setup/status', 'application/json');
     if (typeof r.body !== 'object' || r.body === null) {
-      process.stdout.write(`  ${R('fail')} /setup/status returned non-JSON: ${String(r.body).slice(0, 200)}\n`);
+      process.stdout.write(
+        `  ${R('fail')} /setup/status returned non-JSON: ${String(r.body).slice(0, 200)}\n`,
+      );
       failures++;
     } else {
       for (const c of r.body.checks ?? []) {
@@ -93,10 +95,14 @@ async function main() {
 
   process.stdout.write('\n');
   if (failures === 0) {
-    process.stdout.write(`${G('All systems go.')} Open a PR on a tracked repo to trigger your first review.\n`);
+    process.stdout.write(
+      `${G('All systems go.')} Open a PR on a tracked repo to trigger your first review.\n`,
+    );
     process.exit(0);
   }
-  process.stdout.write(`${R(`${failures} failure(s).`)} Visit ${url}/setup/status for the full report.\n`);
+  process.stdout.write(
+    `${R(`${failures} failure(s).`)} Visit ${url}/setup/status for the full report.\n`,
+  );
   process.exit(1);
 }
 

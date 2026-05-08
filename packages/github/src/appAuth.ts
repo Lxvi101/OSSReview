@@ -1,8 +1,4 @@
-import {
-  type GithubInstallationId,
-  type InstallationToken,
-  RetryableError,
-} from '@gcr/core';
+import { type GithubInstallationId, type InstallationToken, RetryableError } from '@gcr/core';
 import { createAppAuth } from '@octokit/auth-app';
 
 /**

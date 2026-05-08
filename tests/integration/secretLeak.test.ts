@@ -33,9 +33,7 @@ describe('logger never leaks known token shapes', () => {
 
     const output = captured.join('');
     for (const sentinel of SENTINELS) {
-      expect(output, `sentinel must not appear: ${sentinel.slice(0, 20)}…`).not.toContain(
-        sentinel,
-      );
+      expect(output, `sentinel must not appear: ${sentinel.slice(0, 20)}…`).not.toContain(sentinel);
     }
   });
 });

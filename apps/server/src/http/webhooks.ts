@@ -68,6 +68,8 @@ export async function registerWebhookRoutes(
     }
 
     // Strip the raw-body shim before serializing the persisted payload.
+    // (biome-ignore lint/performance/noDelete: exactOptionalPropertyTypes
+    // forbids assigning undefined to a Buffer-typed optional field.)
     const body = req.body as Record<string, unknown> & { __rawBody?: Buffer };
     delete body.__rawBody;
 
@@ -92,7 +94,14 @@ export async function registerWebhookRoutes(
           .executeTakeFirst();
 
         if ((inserted.numInsertedOrUpdatedRows ?? 0n) === 0n) {
-          // Already seen — short-circuit.
+          // Already seen. Stamp processed_at if a previous attempt left it
+          // null (e.g. crashed mid-handler) so the audit row stays consistent.
+          await tx
+            .updateTable('webhook_deliveries')
+            .set({ processed_at: new Date().toISOString(), processing_outcome: 'duplicate' })
+            .where('delivery_id', '=', deliveryId)
+            .where('processed_at', 'is', null)
+            .execute();
           return 'duplicate' as const;
         }
 

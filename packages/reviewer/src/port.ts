@@ -47,11 +47,6 @@ export interface ReviewResultMeta {
   readonly reviewerName: string;
   readonly reviewerVersion: string;
   readonly model?: string;
-  readonly inputTokens?: number;
-  readonly outputTokens?: number;
-  readonly cachedInputTokens?: number;
-  /** Cost in micro-USD. Integer math. */
-  readonly costUsdMicros?: number;
   readonly durationMs: number;
 }
 
@@ -61,11 +56,37 @@ export interface ReviewResult {
   readonly meta: ReviewResultMeta;
 }
 
+/**
+ * Live event the reviewer emits while running, for the transcript view at
+ * `/reviews/:id`. The reviewer doesn't know who's listening; the worker
+ * passes a recorder that writes to storage, the UI polls.
+ */
+export type ReviewerEventKind =
+  | 'assistant_text'
+  | 'assistant_thinking'
+  | 'tool_use'
+  | 'tool_result'
+  | 'sdk_status'
+  | 'error';
+
+export interface ReviewerEvent {
+  readonly kind: ReviewerEventKind;
+  readonly payload: Record<string, unknown>;
+}
+
+export type ReviewerEventRecorder = (event: ReviewerEvent) => void;
+
 export interface ReviewerInput {
   /** Absolute path to the prepared workspace. */
   readonly workspaceDir: string;
   /** Unified diff: base...head. */
   readonly diff: string;
+  /**
+   * Optional recorder for live-view events (Claude turns, tool uses, etc.).
+   * Reviewers should call this synchronously on every interesting step;
+   * the recorder fans out to storage without blocking the model.
+   */
+  readonly onEvent?: ReviewerEventRecorder;
   /** PR metadata (used by the prompt; never used to post back). */
   readonly pr: {
     readonly owner: string;

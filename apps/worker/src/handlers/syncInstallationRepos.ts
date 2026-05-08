@@ -48,9 +48,7 @@ interface InstallationPayload {
   readonly repositories_removed?: ReadonlyArray<RepoRef>;
 }
 
-export function makeSyncInstallationReposHandler(
-  deps: SyncReposDeps,
-): Handler<string, JobData> {
+export function makeSyncInstallationReposHandler(deps: SyncReposDeps): Handler<string, JobData> {
   return async ({ job, logger }) => {
     const delivery = await deps.repos.webhookDeliveries.byDeliveryId(job.data.deliveryId);
     if (!delivery) throw new FatalError('install_sync.unknown_delivery', job.data.deliveryId);

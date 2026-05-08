@@ -30,7 +30,9 @@ describe('format', () => {
 
   it('translates verdict to GitHub event', () => {
     expect(format({ ...summary, verdict: 'approve' }, [], {}).verdict).toBe('APPROVE');
-    expect(format({ ...summary, verdict: 'request_changes' }, [], {}).verdict).toBe('REQUEST_CHANGES');
+    expect(format({ ...summary, verdict: 'request_changes' }, [], {}).verdict).toBe(
+      'REQUEST_CHANGES',
+    );
     expect(format({ ...summary, verdict: 'comment' }, [], {}).verdict).toBe('COMMENT');
   });
 
@@ -49,11 +51,7 @@ describe('format', () => {
   });
 
   it('embeds GitHub suggestion block when suggestion is present', () => {
-    const result = format(
-      summary,
-      [finding({ suggestion: 'const x = 1;' })],
-      {},
-    );
+    const result = format(summary, [finding({ suggestion: 'const x = 1;' })], {});
     expect(result.inlineComments[0]?.body).toContain('```suggestion');
     expect(result.inlineComments[0]?.body).toContain('const x = 1;');
   });

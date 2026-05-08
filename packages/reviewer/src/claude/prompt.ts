@@ -83,6 +83,7 @@ export function buildUserPrompt(input: {
 }
 
 function fence(s: string, max: number): string {
-  const truncated = s.length > max ? `${s.slice(0, max)}\n…[truncated, ${s.length - max} more chars]` : s;
+  const truncated =
+    s.length > max ? `${s.slice(0, max)}\n…[truncated, ${s.length - max} more chars]` : s;
   return ['```', truncated, '```'].join('\n');
 }

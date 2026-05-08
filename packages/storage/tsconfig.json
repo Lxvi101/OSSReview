@@ -5,10 +5,7 @@
     "outDir": "dist",
     "composite": true
   },
-  "references": [
-    { "path": "../core" },
-    { "path": "../observability" }
-  ],
+  "references": [{ "path": "../core" }, { "path": "../observability" }],
   "include": ["src/**/*"],
   "exclude": ["**/*.test.ts", "dist", "node_modules"]
 }

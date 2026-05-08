@@ -114,9 +114,10 @@ function formatSummaryBody(
     counts.length === 0
       ? '_No findings._'
       : counts.map(([sev, n]) => `- **${sev}**: ${n}`).join('\n');
-  const droppedLine = dropped > 0 ? `\n\n_${dropped} finding(s) below the severity floor were not posted._` : '';
+  const droppedLine =
+    dropped > 0 ? `\n\n_${dropped} finding(s) below the severity floor were not posted._` : '';
   return [
-    `### GitHub Code Reviewer`,
+    '### GitHub Code Reviewer',
     '',
     summary.body.trim(),
     '',
@@ -134,7 +135,5 @@ function countBySeverity(findings: readonly FormatFinding[]): Array<[Severity, n
   const counts = new Map<Severity, number>();
   for (const f of findings) counts.set(f.severity, (counts.get(f.severity) ?? 0) + 1);
   // Stable order: highest severity first.
-  return [...counts.entries()].sort(
-    ([a], [b]) => SEVERITY_RANK[b] - SEVERITY_RANK[a],
-  );
+  return [...counts.entries()].sort(([a], [b]) => SEVERITY_RANK[b] - SEVERITY_RANK[a]);
 }

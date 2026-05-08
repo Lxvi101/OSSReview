@@ -1,10 +1,10 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import type { ReviewFinding, ReviewResult, Reviewer, ReviewerInput } from '../port.js';
-import { SubmitFindingsInputSchema, type SubmitFindingsInput } from '../claude/findingsSchema.js';
+import { type SubmitFindingsInput, SubmitFindingsInputSchema } from '../claude/findingsSchema.js';
 import { PROMPT_VERSION, SYSTEM_PROMPT, buildUserPrompt } from '../claude/prompt.js';
+import type { ReviewFinding, ReviewResult, Reviewer, ReviewerInput } from '../port.js';
 import { FINDINGS_JSON_SCHEMA } from './jsonSchema.js';
 
 export interface CodexReviewerOptions {
@@ -39,10 +39,15 @@ export class CodexReviewer implements Reviewer {
     const userPrompt = buildUserPrompt({
       pr: input.pr,
       diff: input.diff,
-      ...(input.settings.promptAddendum !== undefined ? { addendum: input.settings.promptAddendum } : {}),
+      ...(input.settings.promptAddendum !== undefined
+        ? { addendum: input.settings.promptAddendum }
+        : {}),
     });
     const prompt = `${SYSTEM_PROMPT}\n\n${userPrompt}`;
-    const timeoutMs = Math.min(this.opts.timeoutMs, input.settings.walClockMs ?? this.opts.timeoutMs);
+    const timeoutMs = Math.min(
+      this.opts.timeoutMs,
+      input.settings.walClockMs ?? this.opts.timeoutMs,
+    );
 
     try {
       const result = await runProcess(
@@ -100,10 +105,7 @@ export class CodexReviewer implements Reviewer {
   }
 }
 
-function finalize(
-  data: SubmitFindingsInput,
-  meta: ReviewResult['meta'],
-): ReviewResult {
+function finalize(data: SubmitFindingsInput, meta: ReviewResult['meta']): ReviewResult {
   const findings: ReviewFinding[] = data.findings.map((f) => ({
     filePath: f.filePath,
     severity: f.severity,

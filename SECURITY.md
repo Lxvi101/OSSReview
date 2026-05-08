@@ -1,73 +1,38 @@
-# Security policy
+# Security
 
 ## Reporting a vulnerability
 
-**Do not open a public issue.**
+Open a private security advisory on the GitHub repo, or email the
+maintainer. Don't open a public issue.
 
-Please use one of the following private channels:
+## What this app trusts
 
-1. **GitHub Security Advisories** (preferred): use the *Report a vulnerability*
-   button under the Security tab of this repository. This creates a private
-   discussion only the maintainers can see.
-2. **Email**: `security@example.com` (replace with your address before
-   publishing). PGP key fingerprint listed at the bottom of this file.
+- **The host running `docker compose`.** All credentials (GitHub App
+  private key, webhook secret, session cookie key, the 32-byte
+  `SECRETS_KEY` that decrypts at-rest secrets) live on this host.
+- **The reviewer CLI's home directory.** Whoever can read
+  `docker/data/.claude` or `docker/data/.codex` can use your Claude
+  Code / Codex subscription. Treat them like any other credential.
 
-Please include:
+## What we do to limit blast radius
 
-- A description of the issue
-- The specific commit or release version
-- A minimal reproduction (if possible)
-- Whether you intend to disclose publicly, and if so, your timeline
+- **HMAC verification on every webhook**, before any DB write.
+  Bad-signature requests cost a hash and never persist.
+- **Per-installation tokens** are short-lived and minted fresh per logical
+  operation. Octokit caches them in-process only.
+- **`.git/` is removed** from the cloned workspace before the reviewer
+  runs. The reviewer cannot read `.git/config` and recover the token.
+- **The reviewer has no write capability.** The Claude Code adapter
+  registers only `Read`/`Glob`/`Grep`/`LS` plus the `submit_findings` tool;
+  `Edit`/`Write`/`Bash`/`WebFetch`/`WebSearch` are explicitly disallowed.
+- **Secrets at rest are encrypted** with libsodium `crypto_secretbox_easy`
+  (XSalsa20-Poly1305). The DB itself is not encrypted; the high-value
+  fields inside it (App private key, webhook secret) are.
+- **Logs run through two redactors**: pino's structured `redact` for known
+  paths, plus a second regex pass over the serialized line for token shapes
+  that escape into prose (Anthropic keys, GitHub PATs, JWTs, the
+  `SECRETS_KEY` shape).
 
-## Response targets
+## Supported versions
 
-- Acknowledgement within **3 business days**
-- Initial assessment within **7 business days**
-- Coordinated disclosure window of **90 days** by default; we will negotiate
-  if more time is needed for users to upgrade
-
-## Scope
-
-In scope:
-
-- Sandbox escape from the per-review Docker container
-- Authentication bypass on the admin UI
-- Secret leakage (logs, audit, error messages, UI rendering)
-- Webhook signature bypass
-- Prompt-injection chains that cause unintended actions on GitHub
-- SQL injection, XSS, CSRF, path traversal, command injection
-
-Out of scope:
-
-- Denial-of-service against your own self-hosted instance
-- Issues requiring physical access to the host machine
-- Issues in third-party services (Anthropic, GitHub) — please report to them
-- Vulnerabilities in dependencies are accepted via Dependabot/Renovate; only
-  report directly if there is no public CVE yet
-
-## Hardening defaults
-
-The deployed configuration is hardened by default:
-
-- Sandbox containers run with `--read-only`, `--cap-drop=ALL`,
-  `--security-opt=no-new-privileges`, a custom seccomp profile, non-root user,
-  pid/memory/cpu limits, and an egress-firewalled bridge network.
-- The clone happens outside the sandbox; the GitHub installation token never
-  enters it.
-- Anthropic API key is mounted via tmpfs at `/etc/secrets/`, exported to the
-  agent's process env by the entrypoint, then unlinked before exec.
-- pino redacts known sensitive header/payload paths; a post-serialization
-  regex pass strips known token shapes (`sk-ant-*`, `ghs_*`, `ghp_*`, JWTs).
-- At-rest secrets in SQLite are encrypted with libsodium `secretbox` keyed
-  from `SECRETS_KEY`.
-- Webhook bodies are HMAC-verified with constant-time compare before any DB
-  write happens.
-
-See [`docs/architecture.md`](docs/architecture.md) for the full picture.
-
-## PGP key
-
-```
-(replace with your public key fingerprint and ASCII-armored key here before
-publishing — leaving as a placeholder so deployments can configure their own)
-```
+`main` only. There are no LTS branches; if you operate this, track `main`.

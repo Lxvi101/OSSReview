@@ -27,13 +27,21 @@ describe('verifyWebhookSignature', () => {
 
   it('rejects missing header', () => {
     expect(
-      verifyWebhookSignature({ secret: SECRET, rawBody: Buffer.from(''), signatureHeader: undefined }),
+      verifyWebhookSignature({
+        secret: SECRET,
+        rawBody: Buffer.from(''),
+        signatureHeader: undefined,
+      }),
     ).toBe(false);
   });
 
   it('rejects malformed prefix', () => {
     expect(
-      verifyWebhookSignature({ secret: SECRET, rawBody: Buffer.from(''), signatureHeader: 'md5=abc' }),
+      verifyWebhookSignature({
+        secret: SECRET,
+        rawBody: Buffer.from(''),
+        signatureHeader: 'md5=abc',
+      }),
     ).toBe(false);
   });
 

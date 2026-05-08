@@ -1,9 +1,4 @@
-import type {
-  GithubReviewId,
-  IdempotencyKey,
-  PullRequestId,
-  ReviewRunId,
-} from '../ids.js';
+import type { GithubReviewId, IdempotencyKey, PullRequestId, ReviewRunId } from '../ids.js';
 import type { IsoTimestamp } from '../time.js';
 import { type ReviewRunState, assertTransition, isTerminal } from './state.js';
 
@@ -24,12 +19,11 @@ export interface ReviewRun {
   readonly reviewerName: string;
   readonly reviewerVersion: string | null;
   readonly model: string | null;
-  /** Cost in micro-dollars (USD * 1_000_000). Integer math, no floats for money. */
-  readonly costUsdMicros: number | null;
   readonly durationMs: number | null;
   readonly githubReviewId: GithubReviewId | null;
   readonly errorClass: string | null;
   readonly errorMessage: string | null;
+  readonly cancelRequestedAt: IsoTimestamp | null;
   readonly createdAt: IsoTimestamp;
   readonly updatedAt: IsoTimestamp;
 }
@@ -50,7 +44,6 @@ export interface ReviewRunTransition {
   readonly stateReason?: string | null;
   readonly reviewerVersion?: string | null;
   readonly model?: string | null;
-  readonly costUsdMicros?: number | null;
   readonly durationMs?: number | null;
   readonly githubReviewId?: GithubReviewId | null;
   readonly errorClass?: string | null;

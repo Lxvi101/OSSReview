@@ -10,11 +10,8 @@ import type {
 } from '../ids.js';
 import type { PullRequest } from '../pullRequest/aggregate.js';
 import type { Repository, RepositorySettings } from '../repository/aggregate.js';
-import type {
-  NewReviewRun,
-  ReviewRun,
-  ReviewRunTransition,
-} from '../reviewRun/aggregate.js';
+import type { NewReviewRun, ReviewRun, ReviewRunTransition } from '../reviewRun/aggregate.js';
+import type { ReviewEvent } from '../reviewRun/event.js';
 
 /**
  * Repository ports — implemented by `@gcr/storage`.
@@ -72,6 +69,19 @@ export interface PullRequestRepo {
   byNumber(repositoryId: RepositoryId, n: GithubPrNumber): Promise<PullRequest | null>;
 }
 
+/** Pre-joined view of a failed run, for the error-log surface in the UI. */
+export interface RecentFailure {
+  readonly runId: ReviewRunId;
+  readonly repoFullName: string;
+  readonly prNumber: number | null;
+  readonly state: 'failed' | 'cancelled';
+  readonly errorClass: string | null;
+  readonly errorMessage: string | null;
+  readonly attempts: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
 /** A row from review_comments. Used for UI listing. */
 export interface PersistedReviewComment {
   readonly id: ReviewCommentId;
@@ -105,7 +115,11 @@ export interface ReviewRunRepo {
    * (optimistic lock) so two workers can't both transition the same run.
    * Returns the new row.
    */
-  transition(id: ReviewRunId, expectedFromState: string, patch: ReviewRunTransition): Promise<ReviewRun>;
+  transition(
+    id: ReviewRunId,
+    expectedFromState: string,
+    patch: ReviewRunTransition,
+  ): Promise<ReviewRun>;
 
   /** For UI / dashboard. Most recent first. */
   recent(opts?: { limit?: number; pullRequestId?: PullRequestId }): Promise<ReviewRun[]>;
@@ -120,10 +134,22 @@ export interface ReviewRunRepo {
   countMentionRunsForHead(pullRequestId: PullRequestId, headSha: string): Promise<number>;
 
   /**
-   * Sum of `cost_usd_micros` over runs that completed since `sinceIso`.
-   * Drives the daily-cap guard (see `checkCostCap`).
+   * Mark a run for cancellation. The worker observes this on every transition
+   * and aborts the in-flight SDK signal.
    */
-  sumCostMicrosSince(sinceIso: string): Promise<number>;
+  requestCancel(id: ReviewRunId): Promise<void>;
+
+  /**
+   * Recent failed runs across all repositories, for the dashboard error log.
+   * Each row carries enough context to render without a join.
+   */
+  recentFailures(opts?: { limit?: number }): Promise<ReadonlyArray<RecentFailure>>;
+
+  /**
+   * Bulk-delete review runs (and their cascaded comments + events) older
+   * than `cutoffIso`. Returns the number of runs deleted.
+   */
+  deleteOlderThan(cutoffIso: string): Promise<number>;
 
   /** Persist the comments of a completed run. */
   saveComments(
@@ -141,6 +167,37 @@ export interface ReviewRunRepo {
   ): Promise<void>;
 
   listComments(runId: ReviewRunId): Promise<PersistedReviewComment[]>;
+}
+
+export interface ReviewEventRepo {
+  /**
+   * Append a new event to the run's transcript. `seq` is assigned by the
+   * implementation atomically (next-after-current-max for that run) so
+   * concurrent appenders never collide.
+   */
+  append(input: {
+    reviewRunId: ReviewRunId;
+    kind:
+      | 'phase'
+      | 'assistant_text'
+      | 'assistant_thinking'
+      | 'tool_use'
+      | 'tool_result'
+      | 'sdk_status'
+      | 'error';
+    payload: Record<string, unknown>;
+  }): Promise<{ seq: number }>;
+
+  /**
+   * List events for a run in chronological order. `since` is exclusive
+   * (return events with `seq > since`) — that's what the HTMX poll loop
+   * uses to fetch only-new events.
+   */
+  listForRun(input: {
+    reviewRunId: ReviewRunId;
+    since?: number;
+    limit?: number;
+  }): Promise<ReviewEvent[]>;
 }
 
 export interface WebhookDeliveryRecord {

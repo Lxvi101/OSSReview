@@ -31,7 +31,12 @@ export function triage(input: TriageInput): TriageDecision {
   if (event === 'ping') return { kind: 'ignore', reason: 'ping' };
 
   if (event === 'pull_request') {
-    if (action === 'opened' || action === 'reopened' || action === 'synchronize' || action === 'ready_for_review') {
+    if (
+      action === 'opened' ||
+      action === 'reopened' ||
+      action === 'synchronize' ||
+      action === 'ready_for_review'
+    ) {
       const pr = payload.pull_request as { draft?: boolean } | undefined;
       if (pr?.draft && action !== 'ready_for_review') {
         return { kind: 'ignore', reason: 'draft_pr' };

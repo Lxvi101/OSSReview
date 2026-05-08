@@ -42,14 +42,12 @@ export class RepositoryRepository implements RepositoryRepo {
         updated_at: now,
       })
       .onConflict((oc) =>
-        oc
-          .column('github_repo_id')
-          .doUpdateSet({
-            owner: input.owner,
-            name: input.name,
-            installation_id: input.installationId,
-            updated_at: now,
-          }),
+        oc.column('github_repo_id').doUpdateSet({
+          owner: input.owner,
+          name: input.name,
+          installation_id: input.installationId,
+          updated_at: now,
+        }),
       )
       .execute();
 

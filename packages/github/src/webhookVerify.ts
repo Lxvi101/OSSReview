@@ -18,11 +18,7 @@ export interface VerifyArgs {
   readonly signatureHeader: string | undefined; // X-Hub-Signature-256
 }
 
-export function verifyWebhookSignature({
-  secret,
-  rawBody,
-  signatureHeader,
-}: VerifyArgs): boolean {
+export function verifyWebhookSignature({ secret, rawBody, signatureHeader }: VerifyArgs): boolean {
   if (!signatureHeader || !signatureHeader.startsWith('sha256=')) return false;
   const provided = signatureHeader.slice('sha256='.length);
 

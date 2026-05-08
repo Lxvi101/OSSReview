@@ -2,14 +2,9 @@
  * Verify the security invariant: after `cloneHead`, the workspace directory
  * contains NO `.git/` (where credentials, hooks, and refspecs live).
  *
- * The sandbox bind-mounts the workspace read-only; if `.git/` slipped through,
- * a compromised agent could read `.git/config` and recover the installation
- * token GitHub used during the clone. So we test it.
- *
- * Strategy: instantiate the GithubClient, point it at a TINY local bare git
- * repo we set up in a tmpdir, run cloneHead, assert no `.git`. We don't need
- * a real GitHub installation token for this — git happily clones any
- * file:// URL.
+ * If `.git/` slipped through, a compromised reviewer agent could read
+ * `.git/config` and recover the installation token GitHub used during the
+ * clone. So we test it.
  */
 
 import { execFile } from 'node:child_process';
@@ -17,7 +12,7 @@ import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { asGithubInstallationId, type InstallationToken } from '@gcr/core';
+import { type InstallationToken, asGithubInstallationId } from '@gcr/core';
 import { GithubClient, InstallationTokenCache } from '@gcr/github';
 import { buildLogger } from '@gcr/observability';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

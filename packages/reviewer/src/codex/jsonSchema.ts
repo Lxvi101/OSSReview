@@ -1,34 +1,14 @@
-export const FINDINGS_JSON_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['summary', 'findings'],
-  properties: {
-    summary: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['body', 'verdict'],
-      properties: {
-        body: { type: 'string', minLength: 1, maxLength: 20_000 },
-        verdict: { enum: ['approve', 'request_changes', 'comment'] },
-      },
-    },
-    findings: {
-      type: 'array',
-      maxItems: 200,
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['filePath', 'severity', 'body'],
-        properties: {
-          filePath: { type: 'string', minLength: 1 },
-          lineStart: { type: 'integer', minimum: 1 },
-          lineEnd: { type: 'integer', minimum: 1 },
-          severity: { enum: ['blocker', 'warning', 'suggestion', 'nit', 'praise'] },
-          body: { type: 'string', minLength: 1, maxLength: 20_000 },
-          suggestion: { type: 'string', maxLength: 30_000 },
-          category: { type: 'string', maxLength: 80 },
-        },
-      },
-    },
-  },
-} as const;
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import { SubmitFindingsInputSchema } from '../claude/findingsSchema.js';
+
+/**
+ * JSON Schema for the Codex CLI `--output-schema` flag.
+ *
+ * Generated from the same zod schema the Claude adapter uses, so the two
+ * providers stay in lock-step automatically. Codex's structured-output
+ * machinery is JSON-Schema-shaped; this is the bridge.
+ */
+export const FINDINGS_JSON_SCHEMA = zodToJsonSchema(SubmitFindingsInputSchema, {
+  $refStrategy: 'none',
+  target: 'jsonSchema7',
+});

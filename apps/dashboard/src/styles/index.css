@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+/*
+ * Tailwind v4 entry. Design tokens follow the shadcn convention so
+ * hand-authored shadcn-style components work without further config.
+ *
+ * Color values are OKLCH for predictable perceptual contrast across the
+ * palette — the same lightness step gives the same visual weight for
+ * neutral, blue, and red tints.
+ */
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Light theme tokens (shadcn naming) */
+  --color-background: oklch(99% 0.002 247);
+  --color-foreground: oklch(15% 0.01 247);
+  --color-card: oklch(100% 0 0);
+  --color-card-foreground: oklch(15% 0.01 247);
+  --color-popover: oklch(100% 0 0);
+  --color-popover-foreground: oklch(15% 0.01 247);
+  --color-primary: oklch(20% 0.01 247);
+  --color-primary-foreground: oklch(99% 0 0);
+  --color-secondary: oklch(96% 0.005 247);
+  --color-secondary-foreground: oklch(20% 0.01 247);
+  --color-muted: oklch(96% 0.005 247);
+  --color-muted-foreground: oklch(50% 0.015 247);
+  --color-accent: oklch(96% 0.005 247);
+  --color-accent-foreground: oklch(20% 0.01 247);
+  --color-destructive: oklch(55% 0.2 27);
+  --color-destructive-foreground: oklch(99% 0 0);
+  --color-border: oklch(91% 0.005 247);
+  --color-input: oklch(91% 0.005 247);
+  --color-ring: oklch(48% 0.18 257);
+
+  /* Sidebar — shadcn block convention */
+  --color-sidebar: oklch(97% 0.003 247);
+  --color-sidebar-foreground: oklch(20% 0.01 247);
+  --color-sidebar-border: oklch(91% 0.005 247);
+  --color-sidebar-accent: oklch(94% 0.005 247);
+  --color-sidebar-accent-foreground: oklch(15% 0.01 247);
+
+  /* Status palette (semantic). Background = subtle tint; foreground = readable text. */
+  --color-success: oklch(56% 0.13 145);
+  --color-success-bg: oklch(95% 0.05 145);
+  --color-warning: oklch(63% 0.13 65);
+  --color-warning-bg: oklch(96% 0.05 90);
+  --color-info: oklch(56% 0.16 250);
+  --color-info-bg: oklch(95% 0.04 245);
+}
+
+.dark {
+  --color-background: oklch(13% 0.005 247);
+  --color-foreground: oklch(96% 0.005 247);
+  --color-card: oklch(17% 0.005 247);
+  --color-card-foreground: oklch(96% 0.005 247);
+  --color-popover: oklch(17% 0.005 247);
+  --color-popover-foreground: oklch(96% 0.005 247);
+  --color-primary: oklch(96% 0.005 247);
+  --color-primary-foreground: oklch(15% 0.01 247);
+  --color-secondary: oklch(22% 0.008 247);
+  --color-secondary-foreground: oklch(96% 0.005 247);
+  --color-muted: oklch(22% 0.008 247);
+  --color-muted-foreground: oklch(70% 0.015 247);
+  --color-accent: oklch(22% 0.008 247);
+  --color-accent-foreground: oklch(96% 0.005 247);
+  --color-destructive: oklch(60% 0.22 25);
+  --color-destructive-foreground: oklch(96% 0.005 247);
+  --color-border: oklch(28% 0.008 247);
+  --color-input: oklch(28% 0.008 247);
+  --color-ring: oklch(72% 0.16 250);
+
+  --color-sidebar: oklch(15% 0.005 247);
+  --color-sidebar-foreground: oklch(96% 0.005 247);
+  --color-sidebar-border: oklch(25% 0.008 247);
+  --color-sidebar-accent: oklch(22% 0.008 247);
+  --color-sidebar-accent-foreground: oklch(96% 0.005 247);
+
+  --color-success-bg: oklch(28% 0.05 145);
+  --color-warning-bg: oklch(28% 0.05 75);
+  --color-info-bg: oklch(28% 0.05 250);
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar polish — keep it understated. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
+/* Pulse animation used by the SSE live indicator. */
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.pulse-dot {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}

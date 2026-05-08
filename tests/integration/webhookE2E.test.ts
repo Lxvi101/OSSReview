@@ -10,8 +10,8 @@
  * using the same fixture corpus as `webhookTriage.test.ts`. This is the test
  * that catches "I broke the webhook ingress in a refactor."
  *
- * The Claude SDK / sandbox / GitHub adapter are NOT involved — we stop at
- * "the right job got enqueued in the same transaction as the delivery row."
+ * The Claude SDK / GitHub adapter are NOT involved — we stop at "the right
+ * job got enqueued in the same transaction as the delivery row."
  */
 
 import { createHmac } from 'node:crypto';
@@ -20,7 +20,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { BootEnv } from '@gcr/config';
 import { SystemClock } from '@gcr/core';
-import { buildLogger, Metrics } from '@gcr/observability';
+import { Metrics, buildLogger } from '@gcr/observability';
 import { JobQueue } from '@gcr/queue';
 import { buildApp } from '@gcr/server/app';
 import { SecretBox, makeRepositories, openDatabase, runMigrations } from '@gcr/storage';
@@ -58,12 +58,18 @@ const env: BootEnv = {
   PORT: 0,
   PUBLIC_URL: 'http://localhost:0',
   DATABASE_PATH: ':memory:',
+  DASHBOARD_DIST: '',
   SESSION_SECRET,
   SECRETS_KEY,
+  REVIEWER_PROVIDER: 'claude',
+  REVIEWER_TIMEOUT_MS: 1_200_000,
+  CLAUDE_CODE_BINARY: 'claude',
+  CLAUDE_CODE_HOME: '',
+  CLAUDE_CODE_MODEL: 'claude-sonnet-4-5',
+  CODEX_BINARY: 'codex',
+  CODEX_HOME: '',
+  CODEX_MODEL: 'gpt-5-codex',
   LOG_LEVEL: 'fatal',
-  SANDBOX_DOCKER_HOST: 'unix:///dev/null',
-  SANDBOX_IMAGE: 'unused',
-  SANDBOX_TIMEOUT_MS: 1000,
   METRICS_BIND: '127.0.0.1:0',
 };
 

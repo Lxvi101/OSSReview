@@ -46,8 +46,4 @@ export class RetryableError extends DomainError {
 /** A terminal error from an adapter — the worker must NOT re-attempt. */
 export class FatalError extends DomainError {
   override readonly name = 'FatalError';
-
-  constructor(code: string, message: string, cause?: unknown) {
-    super(code, message, cause);
-  }
 }

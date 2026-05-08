@@ -28,15 +28,13 @@ export interface WorkerLoopHandlers {
  * Run the worker loop until `signal` aborts.
  *
  * Each iteration:
- *   1. release stale locks (cheap, ~once per minute)
+ *   1. release stale locks once a minute (also at startup)
  *   2. pick one job
  *   3. run it within a propagated correlation context
- *   4. mark completed or schedule retry/DLQ
+ *   4. mark completed, retry, or terminal-fail
  *
- * The loop is intentionally single-threaded per process. Concurrency is
- * achieved by running multiple worker processes — they coordinate through
- * the queue's atomic pickOne. This keeps the model simple and the failure
- * modes few.
+ * Single-threaded per process. Concurrency = multiple worker processes,
+ * coordinated through atomic pickOne.
  */
 export async function runWorkerLoop(
   queue: JobQueue,
@@ -45,7 +43,16 @@ export async function runWorkerLoop(
 ): Promise<void> {
   const idle = cfg.idlePollMs ?? 1000;
   const stale = cfg.staleLockMs ?? 15 * 60 * 1000;
-  let lastSweep = 0;
+
+  // Sweep stale locks at startup so a worker that just crashed reclaims its
+  // own dropped jobs immediately, not after a 60s wait.
+  try {
+    const released = await queue.releaseStaleLocks(stale);
+    if (released > 0) cfg.logger.warn({ released }, 'queue.stale_locks_released_at_startup');
+  } catch (err) {
+    cfg.logger.error({ err }, 'queue.stale_locks_sweep_failed');
+  }
+  let lastSweep = Date.now();
 
   while (!cfg.signal.aborted) {
     if (Date.now() - lastSweep > 60_000) {
@@ -70,9 +77,8 @@ export async function runWorkerLoop(
 
     const handler = reg.handlers[job.name];
     if (!handler) {
-      // Unknown job name — terminal failure (don't retry forever on a deploy mismatch).
       const msg = `no handler registered for ${job.name}`;
-      await queue.markFailedOrRequeue(job.id, msg);
+      await queue.markFailed(job.id, msg);
       cfg.logger.error({ job_id: job.id, job_name: job.name }, msg);
       cfg.onJobFailed?.(job, Date.now() - t0, false, new Error(msg));
       continue;
@@ -98,16 +104,8 @@ export async function runWorkerLoop(
         );
         cfg.onJobFailed?.(job, ms, requeued, err);
       } else {
-        // Terminal: skip retries, jump straight to DLQ by maxing attempts.
-        await queue
-          .markFailedOrRequeue(job.id, msg)
-          .then(async () => {
-            // Force terminal: if it was requeued, immediately mark failed.
-            const after = await queue.byId(job.id);
-            if (after?.state === 'queued') {
-              await queue.markFailedOrRequeue(job.id, `${msg} [terminal]`);
-            }
-          });
+        // Terminal: skip retries entirely.
+        await queue.markFailed(job.id, msg);
         cfg.logger.error({ job_id: job.id, ms, err: msg }, 'job.terminal_failure');
         cfg.onJobFailed?.(job, ms, false, err);
       }

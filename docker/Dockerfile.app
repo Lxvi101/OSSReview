@@ -25,6 +25,7 @@ WORKDIR /repo
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY apps/server/package.json apps/server/
 COPY apps/worker/package.json apps/worker/
+COPY apps/dashboard/package.json apps/dashboard/
 COPY packages/config/package.json packages/config/
 COPY packages/core/package.json packages/core/
 COPY packages/github/package.json packages/github/
@@ -32,7 +33,6 @@ COPY packages/observability/package.json packages/observability/
 COPY packages/queue/package.json packages/queue/
 COPY packages/reviewer/package.json packages/reviewer/
 COPY packages/storage/package.json packages/storage/
-COPY packages/web/package.json packages/web/
 RUN pnpm install --frozen-lockfile
 
 # ── 2. build ────────────────────────────────────────────────────────────────

@@ -7,7 +7,6 @@ import {
   type GithubCommentId,
   type GithubInstallationId,
   type GithubPrNumber,
-  type GithubReviewId,
   type InstallationToken,
   type PostReviewInput,
   type PostedReview,
@@ -17,9 +16,9 @@ import {
   asGithubReviewId,
 } from '@gcr/core';
 import type { Logger } from '@gcr/observability';
+import { throttling } from '@octokit/plugin-throttling';
 import { RequestError } from '@octokit/request-error';
 import { Octokit } from '@octokit/rest';
-import { throttling } from '@octokit/plugin-throttling';
 import type { InstallationTokenCache } from './appAuth.js';
 
 const execFileP = promisify(execFile);
@@ -29,12 +28,11 @@ const ThrottledOctokit = Octokit.plugin(throttling);
 /**
  * GitHub adapter implementing the `GithubAppClient` port from `@gcr/core`.
  *
- * Two design notes:
- *   1. **Cloning happens here, in the worker process — outside the sandbox.**
- *      We rm `.git` afterwards so secret refspecs and oauth credentials never
- *      land on disk inside the sandbox mount.
- *   2. **Per-call token, not a long-lived Octokit.** Installation tokens are
- *      short-lived; we mint one per logical operation, scoping leakage.
+ *   - Cloning happens here, in the worker process. We rm `.git` afterwards
+ *     so secret refspecs and oauth credentials never land on disk in the
+ *     workspace handed to the reviewer.
+ *   - Per-call Octokit, not a long-lived one. Installation tokens are
+ *     short-lived; we mint one per logical operation.
  */
 export class GithubClient implements GithubAppClient {
   constructor(
@@ -129,7 +127,7 @@ export class GithubClient implements GithubAppClient {
       );
     } finally {
       // Strip credentials from any leftover config and remove .git so the
-      // sandbox mount cannot exfiltrate them via .git/config or hooks.
+      // workspace handed to the reviewer cannot exfiltrate them via .git/config or hooks.
       try {
         await rm(`${targetDir}/.git`, { recursive: true, force: true });
       } catch (err) {
@@ -214,28 +212,6 @@ export class GithubClient implements GithubAppClient {
     } catch (err) {
       // A failed reaction is annoying but never fatal — log and move on.
       this.logger.warn({ err }, 'reactToComment failed');
-    }
-  }
-
-  async findExistingReview(input: {
-    token: InstallationToken;
-    owner: string;
-    repo: string;
-    prNumber: GithubPrNumber;
-    marker: string;
-  }): Promise<{ githubReviewId: GithubReviewId } | null> {
-    const oc = this.octokit(input.token);
-    try {
-      const res = await oc.pulls.listReviews({
-        owner: input.owner,
-        repo: input.repo,
-        pull_number: input.prNumber as number,
-        per_page: 100,
-      });
-      const match = res.data.find((r) => r.body?.includes(input.marker));
-      return match ? { githubReviewId: asGithubReviewId(match.id) } : null;
-    } catch (err) {
-      throw this.translate(err, 'listReviews');
     }
   }
 

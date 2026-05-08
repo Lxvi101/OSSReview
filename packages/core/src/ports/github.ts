@@ -5,6 +5,8 @@ import type {
   GithubReviewId,
 } from '../ids.js';
 
+// GithubReviewId is exported as part of `PostedReview`; no other use here.
+
 /**
  * The minimum GitHub surface the domain knows about.
  *
@@ -107,13 +109,4 @@ export interface GithubAppClient {
     commentId: GithubCommentId;
     content: 'eyes' | '+1' | 'rocket' | 'confused';
   }): Promise<void>;
-
-  /** Find an existing bot review by its embedded marker comment, for resume. */
-  findExistingReview(input: {
-    token: InstallationToken;
-    owner: string;
-    repo: string;
-    prNumber: GithubPrNumber;
-    marker: string;
-  }): Promise<{ githubReviewId: GithubReviewId } | null>;
 }

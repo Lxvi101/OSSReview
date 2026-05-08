@@ -1,11 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "rootDir": "src", "outDir": "dist", "composite": true },
-  "references": [
-    { "path": "../core" },
-    { "path": "../observability" },
-    { "path": "../storage" }
-  ],
+  "references": [{ "path": "../core" }, { "path": "../observability" }, { "path": "../storage" }],
   "include": ["src/**/*"],
   "exclude": ["**/*.test.ts", "dist", "node_modules"]
 }

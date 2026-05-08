@@ -20,11 +20,28 @@ export interface DB {
   pull_requests: PullRequestsTable;
   review_runs: ReviewRunsTable;
   review_comments: ReviewCommentsTable;
+  review_events: ReviewEventsTable;
   webhook_deliveries: WebhookDeliveriesTable;
   audit_events: AuditEventsTable;
   settings: SettingsTable;
   migrations: MigrationsTable;
   jobs: JobsTable;
+}
+
+export interface ReviewEventsTable {
+  id: Generated<number>;
+  review_run_id: number;
+  seq: number;
+  at: Generated<string>;
+  kind:
+    | 'phase'
+    | 'assistant_text'
+    | 'assistant_thinking'
+    | 'tool_use'
+    | 'tool_result'
+    | 'sdk_status'
+    | 'error';
+  payload_json: string;
 }
 
 export interface RepositoriesTable {
@@ -72,11 +89,11 @@ export interface ReviewRunsTable {
   reviewer_name: string;
   reviewer_version: string | null;
   model: string | null;
-  cost_usd_micros: number | null;
   duration_ms: number | null;
   github_review_id: number | null;
   error_class: string | null;
   error_message: string | null;
+  cancel_requested_at: string | null;
   created_at: Generated<string>;
   updated_at: string;
 }
