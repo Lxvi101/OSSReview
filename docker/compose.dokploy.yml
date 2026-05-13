@@ -42,8 +42,8 @@ services:
     command: ["node", "--enable-source-maps", "apps/server/dist/main.js"]
     environment:
       <<: *app-env
-    ports:
-      - "127.0.0.1:3000:3000"
+    expose:
+      - "3000"
     volumes:
       - ./data:/var/lib/gcr
     restart: unless-stopped
