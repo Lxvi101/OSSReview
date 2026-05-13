@@ -1,15 +1,37 @@
 # GitHub Code Reviewer — Dokploy variant.
 #
-# Same as compose.yml, but with read-only bind mounts that expose the
-# Dokploy host's `claude` / `codex` CLI credentials to the worker. On
-# first boot the worker copies them into its own volume; after that the
-# worker owns the files and refreshes tokens in-place.
+# Differs from compose.yml in two ways:
+#   1. Env vars come from Dokploy's UI (not a .env file). Each var is
+#      passed through to the container with ${VAR} substitution so
+#      Dokploy's compose-level injection reaches the app.
+#   2. Read-only bind mounts expose the host's claude/codex credentials
+#      to the worker. On first boot the worker copies them into its own
+#      volume; after that it owns the files and refreshes tokens
+#      in-place.
 #
-# Point Dokploy's "Compose file" at `docker/compose.dokploy.yml`.
-# Override HOST_CLAUDE_PATH / HOST_CODEX_PATH in Dokploy env if your
-# host stores the credentials somewhere other than /root.
+# Point Dokploy's "Compose file" at `docker/compose.dokploy.yml`. Set
+# the env vars listed below in Dokploy's Environment Variables UI.
+# Override HOST_CLAUDE_PATH / HOST_CODEX_PATH if your host stores CLI
+# credentials somewhere other than /root.
 
 name: gcr
+
+x-app-env: &app-env
+  NODE_ENV: "${NODE_ENV:-production}"
+  PORT: "${PORT:-3000}"
+  PUBLIC_URL: "${PUBLIC_URL}"
+  DATABASE_PATH: "${DATABASE_PATH:-/var/lib/gcr/data.sqlite}"
+  SECRETS_KEY: "${SECRETS_KEY}"
+  SESSION_SECRET: "${SESSION_SECRET}"
+  REVIEWER_PROVIDER: "${REVIEWER_PROVIDER:-claude}"
+  REVIEWER_TIMEOUT_MS: "${REVIEWER_TIMEOUT_MS:-1200000}"
+  CLAUDE_CODE_BINARY: "${CLAUDE_CODE_BINARY:-claude}"
+  CLAUDE_CODE_MODEL: "${CLAUDE_CODE_MODEL:-claude-sonnet-4-5}"
+  CODEX_BINARY: "${CODEX_BINARY:-codex}"
+  CODEX_MODEL: "${CODEX_MODEL:-gpt-5-codex}"
+  LOG_LEVEL: "${LOG_LEVEL:-info}"
+  METRICS_BIND: "${METRICS_BIND:-127.0.0.1:9090}"
+  TRUSTED_PROXY_IPS: "${TRUSTED_PROXY_IPS:-loopback}"
 
 services:
   server:
@@ -17,10 +39,9 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
-    env_file:
-      - path: ../.env
-        required: false
     command: ["node", "--enable-source-maps", "apps/server/dist/main.js"]
+    environment:
+      <<: *app-env
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
@@ -38,18 +59,18 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
-    env_file:
-      - path: ../.env
-        required: false
     command: ["node", "--enable-source-maps", "apps/worker/dist/main.js"]
+    environment:
+      <<: *app-env
+      HOME: "/var/lib/gcr"
+      CLAUDE_CODE_HOME: "${CLAUDE_CODE_HOME:-/var/lib/gcr}"
+      CODEX_HOME: "${CODEX_HOME:-/var/lib/gcr/.codex}"
+      HOST_CLAUDE_HOME: "/host-claude"
+      HOST_CODEX_HOME: "/host-codex"
     volumes:
       - ./data:/var/lib/gcr
       - ${HOST_CLAUDE_PATH:-/root/.claude}:/host-claude:ro
       - ${HOST_CODEX_PATH:-/root/.codex}:/host-codex:ro
-    environment:
-      HOME: "/var/lib/gcr"
-      CLAUDE_CODE_HOME: "${CLAUDE_CODE_HOME:-/var/lib/gcr}"
-      CODEX_HOME: "${CODEX_HOME:-/var/lib/gcr/.codex}"
     depends_on:
       server:
         condition: service_healthy
