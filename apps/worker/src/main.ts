@@ -13,7 +13,9 @@
  *       → handlers, runWorkerLoop
  */
 
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { hostname } from 'node:os';
+import { join } from 'node:path';
 import { loadBootEnv } from '@gcr/config';
 import { SystemClock } from '@gcr/core';
 import { GithubClient, InstallationTokenCache } from '@gcr/github';
@@ -42,6 +44,8 @@ async function main(): Promise<void> {
   const env = loadBootEnv();
   const logger = buildLogger({ level: env.LOG_LEVEL, nodeEnv: env.NODE_ENV });
   logger.info({ node: process.version, pid: process.pid }, 'worker.boot');
+
+  seedReviewerCredentialsFromHost(logger);
 
   const handle = openDatabase({ path: env.DATABASE_PATH });
   // Idempotent: server may have already run migrations. Either process can
@@ -174,6 +178,48 @@ async function waitForCredentials(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+// Seed reviewer credentials from a host-mounted directory if present, so
+// users on Dokploy (and similar push-button hosts) can avoid an interactive
+// `claude auth login` inside the container. Only writes if the destination
+// file doesn't already exist — once seeded, the worker owns refreshes and
+// we never overwrite a fresher in-container token with a stale host one.
+function seedReviewerCredentialsFromHost(logger: Logger): void {
+  const home = process.env.HOME ?? '/var/lib/gcr';
+  const claudeRoot = process.env.CLAUDE_CODE_HOME || home;
+  const codexHome = process.env.CODEX_HOME || join(home, '.codex');
+
+  const targets: ReadonlyArray<{ provider: string; src: string; dst: string }> = [
+    {
+      provider: 'claude',
+      src: join(process.env.HOST_CLAUDE_HOME ?? '/host-claude', '.credentials.json'),
+      dst: join(claudeRoot, '.claude', '.credentials.json'),
+    },
+    {
+      provider: 'codex',
+      src: join(process.env.HOST_CODEX_HOME ?? '/host-codex', 'auth.json'),
+      dst: join(codexHome, 'auth.json'),
+    },
+  ];
+
+  for (const t of targets) {
+    try {
+      if (!existsSync(t.src)) continue;
+      if (existsSync(t.dst)) {
+        logger.info({ provider: t.provider }, 'worker.boot.credentials_already_present');
+        continue;
+      }
+      mkdirSync(join(t.dst, '..'), { recursive: true, mode: 0o700 });
+      copyFileSync(t.src, t.dst);
+      logger.info(
+        { provider: t.provider, dst: t.dst },
+        'worker.boot.credentials_seeded_from_host',
+      );
+    } catch (err: unknown) {
+      logger.warn({ provider: t.provider, err }, 'worker.boot.credentials_seed_failed');
+    }
+  }
 }
 
 void main().catch((err: unknown) => {
