@@ -17,7 +17,9 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
-    env_file: ../.env
+    env_file:
+      - path: ../.env
+        required: false
     command: ["node", "--enable-source-maps", "apps/server/dist/main.js"]
     ports:
       - "127.0.0.1:3000:3000"
@@ -36,7 +38,9 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
-    env_file: ../.env
+    env_file:
+      - path: ../.env
+        required: false
     command: ["node", "--enable-source-maps", "apps/worker/dist/main.js"]
     volumes:
       - ./data:/var/lib/gcr
