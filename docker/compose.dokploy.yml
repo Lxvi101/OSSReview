@@ -45,7 +45,7 @@ services:
     expose:
       - "3000"
     volumes:
-      - ./data:/var/lib/gcr
+      - gcr_data:/var/lib/gcr
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health',r=>process.exit(r.statusCode===200?0:1))"]
@@ -68,7 +68,7 @@ services:
       HOST_CLAUDE_HOME: "/host-claude"
       HOST_CODEX_HOME: "/host-codex"
     volumes:
-      - ./data:/var/lib/gcr
+      - gcr_data:/var/lib/gcr
       - ${HOST_CLAUDE_PATH:-/root/.claude}:/host-claude:ro
       - ${HOST_CODEX_PATH:-/root/.codex}:/host-codex:ro
     depends_on:
@@ -76,6 +76,9 @@ services:
         condition: service_healthy
     restart: unless-stopped
     stop_grace_period: 60s
+
+volumes:
+  gcr_data:
 
 networks:
   default:
