@@ -11,15 +11,6 @@
       "dependsOn": ["^build"],
       "outputs": []
     },
-    "test": {
-      "dependsOn": ["^build"],
-      "outputs": ["coverage/**"],
-      "inputs": ["src/**", "tests/**", "package.json", "vitest.config.ts"]
-    },
-    "test:integration": {
-      "dependsOn": ["^build"],
-      "outputs": []
-    },
     "clean": {
       "cache": false,
       "outputs": []

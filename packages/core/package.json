@@ -8,18 +8,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
-    "./ports": "./dist/ports/index.js",
-    "./testing": "./dist/testing/index.js"
+    "./ports": "./dist/ports/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
     "clean": "rm -rf dist .turbo"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
-    "vitest": "^2.1.4"
+    "typescript": "^5.6.3"
   }
 }

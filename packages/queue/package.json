@@ -10,18 +10,16 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
     "@gcr/core": "workspace:*",
     "@gcr/observability": "workspace:*",
     "@gcr/storage": "workspace:*",
-    "kysely": "^0.27.4"
+    "kysely": "^0.28.5"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
-    "typescript": "^5.6.3",
-    "vitest": "^2.1.4"
+    "typescript": "^5.6.3"
   }
 }

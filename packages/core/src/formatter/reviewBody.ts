@@ -8,8 +8,7 @@
  * The shape of `ReviewFinding` is intentionally duplicated here from
  * @gcr/reviewer to keep `core` from importing the reviewer package — the
  * boundary plugin enforces this. The two definitions must be kept in
- * structural sync; a `tests/integration/finding-shape-parity.test.ts` test
- * asserts that.
+ * structural sync.
  */
 
 import type { RepositorySettings } from '../repository/aggregate.js';

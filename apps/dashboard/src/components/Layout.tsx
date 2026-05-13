@@ -11,6 +11,7 @@ import {
   GitPullRequest,
   Github,
   LayoutDashboard,
+  LogOut,
   Moon,
   Settings,
   Sun,
@@ -159,9 +160,20 @@ function Topbar() {
         <Button variant="ghost" size="icon" onClick={toggle} title="Toggle theme" type="button">
           {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
         </Button>
+        <Button variant="ghost" size="icon" onClick={signOut} title="Sign out" type="button">
+          <LogOut className="h-4 w-4" />
+        </Button>
       </div>
     </header>
   );
+}
+
+async function signOut(): Promise<void> {
+  try {
+    await fetch('/api/auth/sign-out', { method: 'POST' });
+  } finally {
+    window.location.href = '/login';
+  }
 }
 
 function Footer() {

@@ -43,6 +43,12 @@ export const BootEnvSchema = z.object({
     .string()
     .regex(/^.+:\d+$/, 'METRICS_BIND must be host:port')
     .default('127.0.0.1:9090'),
+
+  // Fastify trustProxy value. Defaults to 'loopback' (127.0.0.1, ::1) which
+  // is correct for the bundled compose setup. Set to your reverse proxy's
+  // IP or CIDR when deploying behind one; never use 'true' from the
+  // open internet.
+  TRUSTED_PROXY_IPS: z.string().min(1).default('loopback'),
 });
 
 export type BootEnv = z.infer<typeof BootEnvSchema>;

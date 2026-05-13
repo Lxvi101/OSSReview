@@ -60,6 +60,14 @@ async function main(): Promise<void> {
 
   await app.listen({ port: env.PORT, host: '0.0.0.0' });
   logger.info({ port: env.PORT, publicUrl: env.PUBLIC_URL }, 'server.listening');
+
+  const userRow = await handle.kysely.selectFrom('user').select('id').limit(1).executeTakeFirst();
+  if (!userRow) {
+    logger.warn(
+      { signupUrl: `${env.PUBLIC_URL}/login` },
+      'server.bootstrap — no admin user exists; open the URL above to create one (signup auto-closes after first user)',
+    );
+  }
 }
 
 void main().catch((err: unknown) => {

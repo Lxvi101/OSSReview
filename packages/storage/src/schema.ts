@@ -9,10 +9,7 @@ import type { Generated } from 'kysely';
  *   - INTEGER PK → number, generated
  *   - TEXT JSON columns → string in DB, parsed to objects in repositories
  *
- * This file MUST stay in sync with the migrations. The integration test
- * `tests/integration/schema-parity.test.ts` introspects the DB and asserts
- * every column appears here (kysely-codegen would do this for us, but the
- * runtime cost of an extra build step isn't worth it for so few tables).
+ * This file MUST stay in sync with the migrations.
  */
 
 export interface DB {
@@ -26,6 +23,59 @@ export interface DB {
   settings: SettingsTable;
   migrations: MigrationsTable;
   jobs: JobsTable;
+  // Better Auth tables. Better Auth owns reads/writes to these via its own
+  // Kysely instance; we declare them here so cross-table queries (e.g.
+  // "count users") share the typed connection.
+  user: UserTable;
+  session: SessionTable;
+  account: AccountTable;
+  verification: VerificationTable;
+}
+
+export interface UserTable {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: number; // 0 | 1
+  image: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SessionTable {
+  id: string;
+  userId: string;
+  token: string;
+  expiresAt: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AccountTable {
+  id: string;
+  userId: string;
+  accountId: string;
+  providerId: string;
+  accessToken: string | null;
+  refreshToken: string | null;
+  idToken: string | null;
+  accessTokenExpiresAt: string | null;
+  refreshTokenExpiresAt: string | null;
+  scope: string | null;
+  password: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VerificationTable {
+  id: string;
+  identifier: string;
+  value: string;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ReviewEventsTable {

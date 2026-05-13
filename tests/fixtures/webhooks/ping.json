@@ -1,8 +1,0 @@
-{
-  "zen": "Approachable is better than simple.",
-  "hook_id": 12345,
-  "hook": {
-    "type": "App",
-    "app_id": 9999
-  }
-}

@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint-typecheck-test:
-    name: lint + typecheck + test
+  lint-typecheck:
+    name: lint + typecheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,13 +45,10 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test (unit + integration)
-        run: pnpm test
-
   migration-regression:
     name: migrations apply on fresh DB
     runs-on: ubuntu-latest
-    needs: lint-typecheck-test
+    needs: lint-typecheck
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

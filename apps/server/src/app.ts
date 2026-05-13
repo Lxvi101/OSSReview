@@ -10,6 +10,9 @@ import type { JobQueue } from '@gcr/queue';
 import type { DB, Repositories } from '@gcr/storage';
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import type { Kysely } from 'kysely';
+import { registerAuthRoutes } from './auth/fastify.js';
+import { buildAuth } from './auth/instance.js';
+import { buildRequireAuth } from './auth/middleware.js';
 import { registerApiRoutes } from './http/api.js';
 import { registerHealthRoutes } from './http/health.js';
 import { registerMetricsRoutes } from './http/metrics.js';
@@ -49,7 +52,11 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
     loggerInstance: deps.logger as unknown as FastifyBaseLogger,
     bodyLimit: 8 * 1024 * 1024,
     disableRequestLogging: false,
-    trustProxy: true,
+    // Only trust X-Forwarded-* from loopback. The compose setup binds to
+    // localhost; production deployments should put a known reverse proxy in
+    // front and add its address here. Don't use `true` — it lets any client
+    // spoof `req.ip` (which we audit on failed signature attempts).
+    trustProxy: deps.env.TRUSTED_PROXY_IPS,
   });
 
   app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (_req, body, done) => {
@@ -76,6 +83,10 @@ export async function buildApp(deps: BuildAppDeps): Promise<FastifyInstance> {
     wildcard: false,
   });
 
+  const auth = buildAuth({ env: deps.env, db: deps.db, logger: deps.logger });
+  app.addHook('onRequest', buildRequireAuth({ auth }));
+
+  await registerAuthRoutes(app, { auth, db: deps.db });
   await registerHealthRoutes(app, deps);
   await registerMetricsRoutes(app, deps);
   await registerWebhookRoutes(app, deps);

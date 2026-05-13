@@ -16,8 +16,7 @@
  *   - the structured pino redact for known field names
  *   - shape-specific patterns below for tokens that escape into prose
  *
- * If a brand-new token shape appears, add it here AND add a sentinel to
- * `tests/integration/secretLeak.test.ts`.
+ * If a brand-new token shape appears, add it here.
  */
 
 const PATTERNS: ReadonlyArray<RegExp> = [

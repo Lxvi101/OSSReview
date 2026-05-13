@@ -24,6 +24,15 @@ async function request<T>(
     body: body !== undefined ? JSON.stringify(body) : null,
     ...init,
   });
+  if (
+    res.status === 401 &&
+    typeof window !== 'undefined' &&
+    window.location.pathname !== '/login'
+  ) {
+    const next = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/login?next=${next}`;
+    throw new ApiError(401, 'redirecting to login');
+  }
   const text = await res.text();
   let parsed: unknown = null;
   if (text.length > 0) {

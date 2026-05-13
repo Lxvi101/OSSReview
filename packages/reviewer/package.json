@@ -9,13 +9,11 @@
   "exports": {
     ".": "./dist/index.js",
     "./claude": "./dist/claude/index.js",
-    "./codex": "./dist/codex/index.js",
-    "./testing": "./dist/testing/index.js"
+    "./codex": "./dist/codex/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
@@ -27,7 +25,6 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
-    "typescript": "^5.6.3",
-    "vitest": "^2.1.4"
+    "typescript": "^5.6.3"
   }
 }

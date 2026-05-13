@@ -5,15 +5,12 @@
 ```bash
 pnpm install
 pnpm build
-pnpm test
 ```
 
 ## Workflow
 
 - Lint + format with Biome: `pnpm lint:fix`
 - Typecheck: `pnpm typecheck`
-- Run unit + integration tests: `pnpm test`
-- Run a specific package's tests: `pnpm --filter @gcr/<name> test`
 
 ## Repo layout
 
@@ -31,10 +28,3 @@ network); `packages/storage`, `packages/github`, `packages/reviewer`,
   `packages/storage/src/migrations/sql/` and update `packages/storage/src/schema.ts`.
 - New ports: define on `packages/core/src/ports/`, implement in the
   adapter package. Don't import the adapter from core.
-
-## Tests
-
-- Unit tests live next to the code they cover (`*.test.ts`).
-- Integration tests live in `tests/integration/` and use real SQLite + a
-  real Fastify instance.
-- Add a fixture in `tests/fixtures/webhooks/` for new webhook shapes.

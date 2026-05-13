@@ -2,6 +2,7 @@ import { Layout } from '@/components/Layout';
 import { AuditPage } from '@/pages/Audit';
 import { DashboardPage } from '@/pages/Dashboard';
 import { ErrorsPage } from '@/pages/Errors';
+import { LoginPage } from '@/pages/Login';
 import { RepoDetailPage } from '@/pages/RepoDetail';
 import { RepositoriesPage } from '@/pages/Repositories';
 import { ReviewDetailPage } from '@/pages/ReviewDetail';
@@ -13,6 +14,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 export function App() {
   return (
     <Routes>
+      <Route path="/login" element={<LoginPage />} />
       <Route element={<Layout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/repositories" element={<RepositoriesPage />} />
