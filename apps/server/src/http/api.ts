@@ -3,6 +3,7 @@ import type { BootEnv } from '@gcr/config';
 import {
   type RepositorySettings,
   type ReviewRunId,
+  asGithubInstallationId,
   asRepositoryId,
   asReviewRunId,
   fullName,
@@ -517,6 +518,50 @@ export async function registerApiRoutes(app: FastifyInstance, deps: ApiDeps): Pr
     const allOk = checks.every((c) => c.status !== 'fail');
     if (!allOk) reply.code(503);
     return { ok: allOk, checks };
+  });
+
+  // Reset the linked GitHub App. Clears all credentials from the settings
+  // table and disables every tracked repository — the existing rows reference
+  // installation IDs that won't exist under a new App. Rows are kept (not
+  // deleted) so historical data stays intact; the next install will re-enable
+  // them via the upsert-by-github_repo_id path.
+  app.delete('/api/setup/github-app', async (_req, reply) => {
+    const appId = await deps.repos.settings.getPlain<number>('github.app.id');
+    if (!appId) {
+      reply.code(404);
+      return { error: 'no GitHub App is configured' };
+    }
+    const slug = await deps.repos.settings.getPlain<string>('github.app.slug');
+    const keys = [
+      'github.app.id',
+      'github.app.slug',
+      'github.app.client_id',
+      'github.app.client_secret',
+      'github.app.webhook_secret',
+      'github.app.private_key',
+      'github.app.bot_login',
+    ];
+    for (const k of keys) await deps.repos.settings.delete(k);
+
+    const tracked = await deps.repos.repositories.list({ enabled: true });
+    const installationIds = [...new Set(tracked.map((r) => r.installationId as number))];
+    let disabled = 0;
+    for (const id of installationIds) {
+      const n = await deps.repos.repositories.setEnabledForInstallation(
+        asGithubInstallationId(id),
+        false,
+      );
+      disabled += n;
+    }
+
+    await deps.repos.auditLog.record({
+      actor: 'web',
+      kind: 'admin.github_app_reset',
+      subjectType: 'github_app',
+      subjectId: String(appId),
+      data: { slug, reposDisabled: disabled },
+    });
+    return { ok: true, reposDisabled: disabled };
   });
 }
 

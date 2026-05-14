@@ -30,6 +30,7 @@ export type AuditKind =
   | 'secrets.rotated'
   | 'admin.signed_in'
   | 'admin.signed_out'
+  | 'admin.github_app_reset'
   | 'maintenance.prune_runs';
 
 /** What an adapter receives when something needs auditing. */

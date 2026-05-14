@@ -4,16 +4,29 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { type SetupInfo, api } from '@/lib/api';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowUpRight, Github, XCircle } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowUpRight, Github, Trash2, XCircle } from 'lucide-react';
 import { useState } from 'react';
 
 export function SetupLandingPage() {
+  const qc = useQueryClient();
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['setup'],
     queryFn: () => api.get<SetupInfo>('/api/setup'),
   });
   const [name, setName] = useState('gcr-bot');
+  const [resetError, setResetError] = useState<string | null>(null);
+
+  const reset = useMutation({
+    mutationFn: () => api.del<{ ok: true; reposDisabled: number }>('/api/setup/github-app'),
+    onSuccess: () => {
+      setResetError(null);
+      qc.invalidateQueries({ queryKey: ['setup'] });
+      qc.invalidateQueries({ queryKey: ['setup-status'] });
+      qc.invalidateQueries({ queryKey: ['repositories'] });
+    },
+    onError: (e: Error) => setResetError(e.message),
+  });
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
   if (isError || !data)
@@ -49,6 +62,34 @@ export function SetupLandingPage() {
                 <ArrowUpRight className="h-3 w-3" />
               </a>
             ) : null}
+          </CardContent>
+        </Card>
+
+        <Card className="border-destructive/40">
+          <CardHeader>
+            <CardTitle className="text-destructive">Danger zone</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Unlink the current GitHub App so you can register a different one. This clears the
+              stored App ID, slug, client secret, webhook secret, and private key, then disables
+              every tracked repository. Reviews, audit history, and repository settings are kept;
+              installing a new App on the same repos will re-enable them.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button
+              variant="destructive"
+              disabled={reset.isPending}
+              onClick={() => {
+                const confirmed = window.confirm(
+                  'Unlink the current GitHub App? All tracked repositories will be disabled until you install a new App.',
+                );
+                if (confirmed) reset.mutate();
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {reset.isPending ? 'Resetting…' : 'Reset linked GitHub App'}
+            </Button>
+            {resetError ? <p className="text-sm text-destructive">{resetError}</p> : null}
           </CardContent>
         </Card>
       </div>
