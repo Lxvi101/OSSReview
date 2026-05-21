@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { type SetupInfo, api } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -15,6 +16,8 @@ export function SetupLandingPage() {
     queryFn: () => api.get<SetupInfo>('/api/setup'),
   });
   const [name, setName] = useState('gcr-bot');
+  const [ownerType, setOwnerType] = useState<'user' | 'organization'>('user');
+  const [org, setOrg] = useState('');
   const [resetError, setResetError] = useState<string | null>(null);
 
   const reset = useMutation({
@@ -168,9 +171,40 @@ export function SetupLandingPage() {
                 required
                 className="max-w-md"
               />
+              <Label htmlFor="ownerType" className="pt-2">
+                Create under
+              </Label>
+              <Select
+                id="ownerType"
+                name="ownerType"
+                value={ownerType}
+                onChange={(e) => setOwnerType(e.target.value as 'user' | 'organization')}
+                className="max-w-md"
+              >
+                <option value="user">My GitHub account</option>
+                <option value="organization">A GitHub organization</option>
+              </Select>
+              {ownerType === 'organization' ? (
+                <>
+                  <Label htmlFor="org" className="pt-2">
+                    Organization
+                  </Label>
+                  <Input
+                    id="org"
+                    name="org"
+                    value={org}
+                    onChange={(e) => setOrg(e.target.value)}
+                    required
+                    placeholder="acme-inc"
+                    pattern="[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?"
+                    className="max-w-md"
+                  />
+                </>
+              ) : null}
               <p className="col-span-full text-xs text-muted-foreground">
                 The form below submits to GitHub. They'll redirect back to this server with the new
-                App's credentials.
+                App's credentials. Choose an organization here when the repositories are owned by
+                that organization.
               </p>
               <div className="col-span-full flex justify-end border-t border-border pt-4">
                 <Button type="submit">

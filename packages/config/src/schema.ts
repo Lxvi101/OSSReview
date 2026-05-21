@@ -24,7 +24,7 @@ export const BootEnvSchema = z.object({
       'SECRETS_KEY must be 32-byte hex (64 hex chars). Generate with: openssl rand -hex 32',
     ),
 
-  REVIEWER_PROVIDER: z.enum(['claude', 'codex']).default('claude'),
+  REVIEWER_PROVIDER: z.enum(['claude', 'codex', 'acp']).default('claude'),
   REVIEWER_TIMEOUT_MS: z.coerce
     .number()
     .int()
@@ -36,6 +36,15 @@ export const BootEnvSchema = z.object({
   CODEX_BINARY: z.string().min(1).default('codex'),
   CODEX_HOME: z.string().default(''),
   CODEX_MODEL: z.string().min(1).default('gpt-5-codex'),
+
+  // Generic Agent Client Protocol reviewer. Drives any ACP-compliant agent
+  // as a subprocess. `github-copilot` runs `copilot --acp`; `custom` takes
+  // command/args entirely from ACP_AGENT_COMMAND / ACP_AGENT_ARGS.
+  ACP_AGENT: z.enum(['github-copilot', 'custom']).default('github-copilot'),
+  ACP_AGENT_COMMAND: z.string().default(''),
+  ACP_AGENT_ARGS: z.string().default(''),
+  ACP_AGENT_HOME: z.string().default(''),
+  ACP_MODEL: z.string().default(''),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 

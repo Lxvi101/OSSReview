@@ -94,8 +94,9 @@ if [ -z "$PUBLIC_URL" ]; then
   PUBLIC_URL="$(prompt_default 'PUBLIC_URL (URL GitHub posts webhooks to)' 'http://localhost:3000')"
 fi
 
-if [ "$REVIEWER_PROVIDER" != "claude" ] && [ "$REVIEWER_PROVIDER" != "codex" ]; then
-  printf "REVIEWER_PROVIDER must be 'claude' or 'codex'\n" >&2
+if [ "$REVIEWER_PROVIDER" != "claude" ] && [ "$REVIEWER_PROVIDER" != "codex" ] &&
+  [ "$REVIEWER_PROVIDER" != "acp" ]; then
+  printf "REVIEWER_PROVIDER must be 'claude', 'codex', or 'acp'\n" >&2
   exit 64
 fi
 
@@ -137,6 +138,15 @@ CLAUDE_CODE_MODEL=claude-sonnet-4-5
 CODEX_BINARY=codex
 CODEX_HOME=
 CODEX_MODEL=gpt-5-codex
+
+# Generic ACP reviewer (only used when REVIEWER_PROVIDER=acp or a repo
+# overrides to "acp"). github-copilot runs \`copilot --acp\`; "custom"
+# takes command/args from ACP_AGENT_COMMAND / ACP_AGENT_ARGS.
+ACP_AGENT=github-copilot
+ACP_AGENT_COMMAND=
+ACP_AGENT_ARGS=
+ACP_AGENT_HOME=
+ACP_MODEL=
 
 # 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace'
 LOG_LEVEL=info

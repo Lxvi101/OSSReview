@@ -292,6 +292,7 @@ function SettingsForm({ initial, saving, onSubmit }: SettingsFormProps) {
             <option value="">Default</option>
             <option value="claude">Claude Code CLI</option>
             <option value="codex">Codex CLI</option>
+            <option value="acp">ACP agent (Copilot / custom)</option>
           </Select>
 
           <Label htmlFor="model" className="pt-2">

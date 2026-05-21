@@ -104,7 +104,7 @@ export interface ReviewerInput {
    */
   readonly settings: {
     readonly model?: string;
-    readonly reviewerProvider?: 'claude' | 'codex';
+    readonly reviewerProvider?: 'claude' | 'codex' | 'acp';
     readonly promptAddendum?: string;
     readonly maxTurns?: number;
     readonly maxOutputTokens?: number;

@@ -28,13 +28,15 @@ export interface SetupDeps {
  */
 export async function registerSetupRoutes(app: FastifyInstance, deps: SetupDeps): Promise<void> {
   // ── Manifest form (autosubmits to GitHub) ─────────────────────────────────
-  app.post<{ Body: { name: string } }>('/setup/manifest', async (req, reply) => {
-    const preflight = preflightPublicUrl(deps.env.PUBLIC_URL);
-    if (!preflight.ok) {
-      reply
-        .code(400)
-        .type('text/html; charset=utf-8')
-        .send(`<!doctype html>
+  app.post<{ Body: { name: string; ownerType?: string; org?: string } }>(
+    '/setup/manifest',
+    async (req, reply) => {
+      const preflight = preflightPublicUrl(deps.env.PUBLIC_URL);
+      if (!preflight.ok) {
+        reply
+          .code(400)
+          .type('text/html; charset=utf-8')
+          .send(`<!doctype html>
 <meta charset="utf-8"><title>PUBLIC_URL invalid</title>
 <style>body{font:14px/1.5 -apple-system,Segoe UI,sans-serif;max-width:720px;margin:48px auto;padding:0 24px;color:#0e1116}
 h1{color:#d1242f} pre{background:#f6f7f9;padding:12px;border-radius:6px;white-space:pre-wrap}</style>
@@ -43,24 +45,45 @@ h1{color:#d1242f} pre{background:#f6f7f9;padding:12px;border-radius:6px;white-sp
 <p><strong>What to do:</strong> ${escapeHtml(preflight.suggestion)}</p>
 <pre>Currently: PUBLIC_URL=${escapeHtml(deps.env.PUBLIC_URL)}</pre>
 <p>Update <code>.env</code>, restart the stack, and refresh <a href="/setup">/setup</a>.</p>`);
-      return;
-    }
+        return;
+      }
 
-    const name = (req.body?.name ?? 'gcr-bot').slice(0, 34);
-    const manifest = buildManifest({ name, publicUrl: deps.env.PUBLIC_URL });
-    const json = JSON.stringify(manifest)
-      .replace(/&/g, '&amp;')
-      .replace(/"/g, '&quot;')
-      .replace(/</g, '&lt;');
-    const html = `<!doctype html><html><body onload="document.forms[0].submit()">
-<form action="https://github.com/settings/apps/new" method="post">
+      const name = (req.body?.name ?? 'gcr-bot').slice(0, 34);
+      const ownerType = req.body?.ownerType === 'organization' ? 'organization' : 'user';
+      const org = (req.body?.org ?? '').trim();
+      if (ownerType === 'organization' && !isGithubLogin(org)) {
+        reply
+          .code(400)
+          .type('text/html; charset=utf-8')
+          .send(`<!doctype html>
+<meta charset="utf-8"><title>Organization required</title>
+<style>body{font:14px/1.5 -apple-system,Segoe UI,sans-serif;max-width:720px;margin:48px auto;padding:0 24px;color:#0e1116}
+h1{color:#d1242f} code{background:#f6f7f9;padding:2px 5px;border-radius:4px}</style>
+<h1>Organization name required</h1>
+<p>Enter the GitHub organization slug exactly as it appears in the URL, for example <code>acme-inc</code>.</p>
+<p><a href="/setup">Back to setup</a></p>`);
+        return;
+      }
+
+      const manifestUrl =
+        ownerType === 'organization'
+          ? `https://github.com/organizations/${encodeURIComponent(org)}/settings/apps/new`
+          : 'https://github.com/settings/apps/new';
+      const manifest = buildManifest({ name, publicUrl: deps.env.PUBLIC_URL });
+      const json = JSON.stringify(manifest)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;');
+      const html = `<!doctype html><html><body onload="document.forms[0].submit()">
+<form action="${manifestUrl}" method="post">
   <input type="hidden" name="manifest" value="${json}">
   <p>Redirecting you to GitHub…</p>
   <noscript><button type="submit">Continue to GitHub →</button></noscript>
 </form>
 </body></html>`;
-    sendHtml(reply, html);
-  });
+      sendHtml(reply, html);
+    },
+  );
 
   // ── Manifest exchange callback ────────────────────────────────────────────
   app.get<{ Querystring: { code?: string } }>('/setup/callback', async (req, reply) => {
@@ -136,4 +159,8 @@ function escapeHtml(s: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function isGithubLogin(s: string): boolean {
+  return /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(s);
 }

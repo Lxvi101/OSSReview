@@ -44,6 +44,17 @@ Or for Codex:
 docker compose -f docker/compose.yml exec worker codex login
 ```
 
+Or, with `REVIEWER_PROVIDER=acp` and `ACP_AGENT=github-copilot`, log in to
+the Copilot CLI (it speaks the Agent Client Protocol via `copilot --acp`):
+
+```bash
+docker compose -f docker/compose.yml exec worker copilot   # then: /login
+```
+
+Any other ACP agent works too — set `ACP_AGENT=custom` with
+`ACP_AGENT_COMMAND` / `ACP_AGENT_ARGS`. Verify any agent end-to-end before
+relying on it: `pnpm acp:selftest --agent "copilot --acp"`.
+
 Auth files persist on the bind-mounted `docker/data` volume.
 
 If you'd rather not log in inside the container, you can copy your host's
@@ -72,6 +83,9 @@ path instead.
 Open the URL `bootstrap` printed (default `http://localhost:3000/setup`).
 
 1. Type a unique-on-GitHub bot name (e.g. `gcr-bot-yourhandle`).
+   If the repositories are owned by an organization, choose **A GitHub
+   organization** and enter the org slug so GitHub creates the App under that
+   org instead of your personal account.
 2. Click **Create GitHub App**. You'll bounce to GitHub, confirm, and come
    back. The server exchanges the manifest code for the App credentials and
    persists them encrypted.

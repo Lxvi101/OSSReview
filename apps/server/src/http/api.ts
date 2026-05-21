@@ -408,7 +408,11 @@ export async function registerApiRoutes(app: FastifyInstance, deps: ApiDeps): Pr
     }
     if (b.promptAddendum?.trim()) patch.promptAddendum = b.promptAddendum.trim();
     if (b.model?.trim()) patch.model = b.model.trim();
-    if (b.reviewerProvider === 'claude' || b.reviewerProvider === 'codex') {
+    if (
+      b.reviewerProvider === 'claude' ||
+      b.reviewerProvider === 'codex' ||
+      b.reviewerProvider === 'acp'
+    ) {
       patch.reviewerProvider = b.reviewerProvider;
     }
     if (Array.isArray(b.ignorePaths)) {
@@ -596,7 +600,9 @@ interface StatusCheck {
 }
 
 async function collectStatusChecks(deps: ApiDeps): Promise<StatusCheck[]> {
-  const [appId, slug, privateKey, webhookSecret, repos, claudeCheck, codexCheck] =
+  const acpBinary =
+    deps.env.ACP_AGENT_COMMAND || (deps.env.ACP_AGENT === 'github-copilot' ? 'copilot' : '');
+  const [appId, slug, privateKey, webhookSecret, repos, claudeCheck, codexCheck, acpCheck] =
     await Promise.all([
       deps.repos.settings.getPlain<number>('github.app.id'),
       deps.repos.settings.getPlain<string>('github.app.slug'),
@@ -609,6 +615,11 @@ async function collectStatusChecks(deps: ApiDeps): Promise<StatusCheck[]> {
         deps.env.REVIEWER_PROVIDER === 'claude',
       ),
       providerCheck('Codex CLI', deps.env.CODEX_BINARY, deps.env.REVIEWER_PROVIDER === 'codex'),
+      providerCheck(
+        `ACP agent (${deps.env.ACP_AGENT})`,
+        acpBinary,
+        deps.env.REVIEWER_PROVIDER === 'acp',
+      ),
     ]);
 
   const checks: StatusCheck[] = [];
@@ -631,6 +642,7 @@ async function collectStatusChecks(deps: ApiDeps): Promise<StatusCheck[]> {
   });
   checks.push(claudeCheck);
   checks.push(codexCheck);
+  checks.push(acpCheck);
   checks.push({
     name: 'Public URL',
     description: 'GitHub posts webhooks to PUBLIC_URL/webhooks/github.',

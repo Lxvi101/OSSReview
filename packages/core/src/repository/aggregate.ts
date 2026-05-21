@@ -30,7 +30,7 @@ export interface RepositorySettings {
   /** Override the default model for this repo. */
   readonly model?: string;
   /** Override the default local reviewer provider for this repo. */
-  readonly reviewerProvider?: 'claude' | 'codex';
+  readonly reviewerProvider?: 'claude' | 'codex' | 'acp';
   /** Skip drafts. Default: true. */
   readonly skipDrafts?: boolean;
   /** Maximum mention-triggered re-runs per PR. Default: 3. */

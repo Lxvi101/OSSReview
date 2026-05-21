@@ -21,6 +21,7 @@
     "db:migrate": "pnpm --filter @gcr/storage migrate",
     "db:migrate:dry-run": "pnpm --filter @gcr/storage migrate:dry-run",
     "smoke": "node scripts/smoke.mjs",
+    "acp:selftest": "node scripts/acp-selftest.mjs",
     "init-env": "bash scripts/init-env.sh",
     "bootstrap": "bash scripts/bootstrap.sh",
     "gcr": "node scripts/gcr.mjs",

@@ -8,6 +8,7 @@
 ARG NODE_VERSION=20.11.0
 ARG CLAUDE_CODE_VERSION=2.1.129
 ARG CODEX_CLI_VERSION=0.128.0
+ARG COPILOT_CLI_VERSION=1.0.50
 
 # ── 1. deps ──────────────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION}-bookworm-slim AS deps
@@ -47,7 +48,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 RUN npm install -g \
       @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION} \
-      @openai/codex@${CODEX_CLI_VERSION}
+      @openai/codex@${CODEX_CLI_VERSION} \
+      @github/copilot@${COPILOT_CLI_VERSION}
 WORKDIR /app
 
 # Bring node_modules and built JS only.

@@ -1,12 +1,14 @@
 import { FatalError } from '@gcr/core';
 import type { ReviewResult, Reviewer, ReviewerInput } from './port.js';
 
-export type ReviewerProvider = 'claude' | 'codex';
+export type ReviewerProvider = 'claude' | 'codex' | 'acp';
 
 export interface ProviderRouterReviewerOptions {
   readonly defaultProvider: ReviewerProvider;
   readonly claude: Reviewer;
   readonly codex: Reviewer;
+  /** Generic Agent Client Protocol adapter (Copilot CLI, custom agents). */
+  readonly acp: Reviewer;
 }
 
 export class ProviderRouterReviewer implements Reviewer {
@@ -26,6 +28,8 @@ export class ProviderRouterReviewer implements Reviewer {
         return this.opts.claude;
       case 'codex':
         return this.opts.codex;
+      case 'acp':
+        return this.opts.acp;
       default: {
         const _exhaustive: never = chosen;
         throw new FatalError(

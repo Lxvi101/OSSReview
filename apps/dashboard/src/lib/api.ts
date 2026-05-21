@@ -181,7 +181,7 @@ export interface RepositoryDetail {
     severityFloor: Severity | null;
     promptAddendum: string | null;
     model: string | null;
-    reviewerProvider: 'claude' | 'codex' | null;
+    reviewerProvider: 'claude' | 'codex' | 'acp' | null;
     ignorePaths: ReadonlyArray<string>;
     skipDrafts: boolean;
     maxMentionsPerPr: number | null;

@@ -2,7 +2,9 @@
 
 Self-hosted GitHub PR review bot. Listens for webhooks, reviews each new PR
 once automatically, and re-runs on demand when you `@mention` it. Uses your
-local Claude Code or Codex CLI subscription — no API key required.
+local Claude Code or Codex CLI subscription — no API key required. Or point
+it at any [Agent Client Protocol](https://agentclientprotocol.com/) agent
+(GitHub Copilot CLI, and more) via `REVIEWER_PROVIDER=acp`.
 
 ## Quickstart
 
@@ -38,13 +40,14 @@ apps/
 packages/
   core/        Pure domain. ReviewRun aggregate, state machine, formatter, ports
   github/      @octokit/* — App auth, webhook signature verify, PR client
-  reviewer/    Reviewer port + Claude Code SDK + Codex CLI adapters
+  reviewer/    Reviewer port + Claude SDK / Codex CLI / generic ACP adapters
   storage/     Kysely + better-sqlite3 + numbered raw-SQL migrations
   queue/       SQLite-backed durable job queue
   config/      zod-validated env loader
   observability/  pino logger, prom-client metrics, AsyncLocalStorage context
 docker/        Dockerfile.app + compose.yml
-scripts/       bootstrap.sh, init-env.sh, gcr.mjs (operator CLI), smoke.mjs
+scripts/       bootstrap.sh, init-env.sh, gcr.mjs (operator CLI), smoke.mjs,
+               acp-selftest.mjs (verify an ACP agent end-to-end)
 ```
 
 ## Lifecycle
@@ -63,7 +66,7 @@ POST /webhooks/github  ── tx ──►  webhook_deliveries + jobs   (returns
                               │
                           token-authenticated git clone, .git stripped
                               │
-                state: reviewing  ──►  ClaudeReviewer or CodexReviewer
+                state: reviewing  ──►  Claude / Codex / ACP reviewer
                                        (read-only file tools, structured findings)
                               │
                 state: posting   ──►  GitHub Review API

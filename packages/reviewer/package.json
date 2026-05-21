@@ -3,13 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Reviewer port + local Claude/Codex CLI adapters.",
+  "description": "Reviewer port + local Claude/Codex CLI adapters + generic ACP adapter.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
     "./claude": "./dist/claude/index.js",
-    "./codex": "./dist/codex/index.js"
+    "./codex": "./dist/codex/index.js",
+    "./acp": "./dist/acp/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -19,8 +20,9 @@
   "dependencies": {
     "@gcr/core": "workspace:*",
     "@gcr/observability": "workspace:*",
+    "@agentclientprotocol/sdk": "^0.22.1",
     "@anthropic-ai/claude-agent-sdk": "^0.1.0",
-    "zod": "^3.23.8",
+    "zod": "^3.25.0",
     "zod-to-json-schema": "^3.23.5"
   },
   "devDependencies": {

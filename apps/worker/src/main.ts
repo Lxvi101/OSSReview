@@ -22,6 +22,7 @@ import { GithubClient, InstallationTokenCache } from '@gcr/github';
 import { type Logger, Metrics, buildLogger } from '@gcr/observability';
 import { type Handler, JobQueue, runWorkerLoop } from '@gcr/queue';
 import { ProviderRouterReviewer } from '@gcr/reviewer';
+import { AcpReviewer, resolveAcpPreset } from '@gcr/reviewer/acp';
 import { ClaudeReviewer } from '@gcr/reviewer/claude';
 import { CodexReviewer } from '@gcr/reviewer/codex';
 import {
@@ -107,6 +108,12 @@ async function main(): Promise<void> {
       binaryPath: env.CODEX_BINARY,
       homePath: env.CODEX_HOME,
       defaultModel: env.CODEX_MODEL,
+      timeoutMs: env.REVIEWER_TIMEOUT_MS,
+    }),
+    acp: new AcpReviewer({
+      preset: resolveAcpPreset(env),
+      ...(env.ACP_AGENT_HOME ? { homePath: env.ACP_AGENT_HOME } : {}),
+      ...(env.ACP_MODEL ? { defaultModel: env.ACP_MODEL } : {}),
       timeoutMs: env.REVIEWER_TIMEOUT_MS,
     }),
   });
